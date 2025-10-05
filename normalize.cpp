@@ -32,7 +32,7 @@ void normalize(kepler_orbit_denorm* denorm, kepler_orbit* norm, double R_0, doub
     double delta_t = 8400*(denorm->t0 - denorm->T0);
     double mean_anomaly = mean_movement*delta_t;
 
-    mean_anomaly = fmod(M_0, 2*M_PI); // Возможное место ошибок
+    //mean_anomaly = fmod(M_0, 2*M_PI); // Возможное место ошибок
 
     // Normalize Mean anomaly
     norm->M0 = mean_anomaly;
