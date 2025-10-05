@@ -6,11 +6,13 @@
 // Newton
 double f(double E, double e, double M)
 {
+    // Решаемое уравнение
     return E - e*sin(E) - M;
 }
 
 double f_der(double E, double e)
 {
+    // Производная по E
     return 1 - e*cos(E);
 }
 double newtons_method(double E_0, double e, double M)
