@@ -1,6 +1,9 @@
 #ifndef NORMALIZE
 #define NORMALIZE
 #include "normalize.h"
+#include "transform.h"
+
+// Здесь даны данные из статьи
 
 struct kepler_orbit_denorm {
     double a;     // Semi-major axis (arcsec)
@@ -12,6 +15,6 @@ struct kepler_orbit_denorm {
     double t0;
 } typedef kepler_orbit_denorm;
 
-void normalize(kepler_orbit_denorm* denorm, kepler_orbit* norm);
+void normalize(kepler_orbit_denorm* denorm, kepler_orbit* norm, double R_0, double M_0);
 
 #endif

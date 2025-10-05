@@ -5,13 +5,11 @@
 // Newton
 double f(double E, double e, double M)
 {
-    // Решаемое уравнение
     return E - e*sin(E) - M;
 }
 
 double f_der(double E, double e)
 {
-    // Производная по E
     return 1 - e*cos(E);
 }
 double newtons_method(double E_0, double e, double M)
@@ -69,7 +67,7 @@ double calc_M(kepler_orbit* orbit, double grav_param, double t) {
 }
 
 double solve_kepler_eq(kepler_orbit* orbit, double M) {
-    // Solve Kepler’s Equation for the eccentric anomaly
+    // Solve KeplerпїЅs Equation for the eccentric anomaly
     return newtons_method(M, orbit->e, M);
 }
 
