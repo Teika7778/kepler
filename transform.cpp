@@ -1,5 +1,4 @@
 #include "transform.h"
-#include <iostream>
 #include <cmath>
 #define MAX_ITER_NEWTON 100
 
@@ -58,12 +57,15 @@ double newtons_method(double E_0, double e, double M)
 // Newton END
 
 double calc_M(kepler_orbit* orbit, double grav_param, double t) {
+    return orbit->M0;
+    /*
     // Determine the time difference dt in seconds with
     double delta_t = 86400 * (t - orbit->t0);
     // Calculate mean anomaly M(t) from
     double M = orbit->M0 + delta_t * sqrt(grav_param / pow(orbit->a, 3));
     // Normalize M(t) to be in [0; 2pi)
-    return fmod(M, 2*M_PI);
+    return fmod(M, 2*M_PI); // Возможное место ошибок
+    */
 }
 
 double solve_kepler_eq(kepler_orbit* orbit, double M) {
