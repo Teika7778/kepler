@@ -5,7 +5,6 @@
 #include <cmath>
 #define MAX_ITER_NEWTON 100
 
-
 struct kepler_orbit {
     double a;     // Semi-major axis (m)
     double e;     // Eccentricity (-)
