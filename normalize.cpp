@@ -26,7 +26,7 @@ void normalize(kepler_orbit_denorm* denorm, kepler_orbit* norm, double R_0, doub
     // Calculate mean_movement
     double mean_movement = sqrt( (M_0/pow(norm->a, 3)) * G);
 
-    double delta_t = 8400*(denorm->t0 - denorm->T0);
+    double delta_t = 365.25*86400*(denorm->t0 - denorm->T0);
     double mean_anomaly = mean_movement*delta_t;
 
     mean_anomaly = fmod(mean_anomaly, 2*M_PI); // Возможное место ошибок
