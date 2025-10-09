@@ -1,19 +1,21 @@
-#include "transform.h"
 #include <cmath>
+
+#include "transform.hpp"
+
 #define MAX_ITER_NEWTON 100
 
-// Newton
-double f(double E, double e, double M)
+double kepler_equation(double E, double e, double M)
 {
     return E - e*sin(E) - M;
 }
 
-double f_der(double E, double e)
+double kepler_equation_derivative(double E, double e)
 {
     return 1 - e*cos(E);
 }
 double newtons_method(double E_0, double e, double M)
 {
+    // first approximation
     double En = E_0;
     int i = 0;
 
@@ -23,24 +25,24 @@ double newtons_method(double E_0, double e, double M)
 
     while (++i != MAX_ITER_NEWTON)
     {
-        arr[i] = arr[i-1] - f(arr[i-1], e, M) / f_der(arr[i-1], e);
+        // itaration step
+        arr[i] = arr[i-1] - kepler_equation(arr[i-1], e, M) / kepler_equation_derivative(arr[i-1], e);
 
-        if (arr[i] - arr[i-1] == 0)
+        if (arr[i] - arr[i-1] == 0) // if value didnt change - no sense going more 
             return arr[i];
-        if (f(arr[i], e, M) == 0)
+        if (kepler_equation(arr[i], e, M) == 0) // root found
             return arr[i];
 
-
-        if (std::isnan(arr[i]) || std::isinf(arr[i])) return arr[i];
+        if (std::isnan(arr[i]) || std::isinf(arr[i])) return arr[i]; // errors found
 
         for (int j=0; j<i; j++)
         {
-            if (arr[j] == arr[i])
+            if (arr[j] == arr[i]) // loop found
             {
-                double best_root = arr[j];
+                double best_root = arr[j]; // best root in loop
                 for (int m = j; m<i; m++)
                 {
-                    if (fabs(f(arr[m], e, M)) < fabs(f(best_root, e, M)))
+                    if (fabs(kepler_equation(arr[m], e, M)) < fabs(kepler_equation(best_root, e, M)))
                         best_root =  arr[m];
                 }
 
@@ -49,21 +51,7 @@ double newtons_method(double E_0, double e, double M)
         }
     }
 
-    return arr[MAX_ITER_NEWTON-1];
-}
-
-// Newton END
-
-double calc_M(kepler_orbit* orbit, double grav_param, double t) {
-    return orbit->M0;
-    /*
-    // Determine the time difference dt in seconds with
-    double delta_t = 86400 * (t - orbit->t0);
-    // Calculate mean anomaly M(t) from
-    double M = orbit->M0 + delta_t * sqrt(grav_param / pow(orbit->a, 3));
-    // Normalize M(t) to be in [0; 2pi)
-    return fmod(M, 2*M_PI); // Возможное место ошибок
-    */
+    return arr[MAX_ITER_NEWTON-1]; // in other cases return last approximation
 }
 
 double solve_kepler_eq(kepler_orbit* orbit, double M) {
@@ -109,10 +97,10 @@ void transform_cords(double* s, kepler_orbit* orbit, double* ret) {
     ret[2] = x*sin(w)*sin(i) + y*cos(w)*sin(i);
 }
 
-void kepler_to_cart(kepler_orbit* orbit, double t, double grav_param,
+void kepler_to_cart(kepler_orbit* orbit, double grav_param,
                     double* pos, double* velo) {
 
-    double M = calc_M(orbit, grav_param, t);
+    double M = orbit->M0;
     double E = solve_kepler_eq(orbit, M);
     double v = true_anomaly(orbit, E);
     double d = calc_dist(orbit, E);

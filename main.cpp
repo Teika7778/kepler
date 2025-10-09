@@ -1,42 +1,38 @@
-#include "transform.h"
-#include "normalize.h"
-#define G 6.67428e-11
 #include <cmath>
+#include <iostream>
+
+#include "constans.hpp"
+#include "struct.hpp"
+#include "normalize.hpp"
+#include "transform.hpp"
+
 
 int main() {
-    kepler_orbit_denorm denorm;
+    kepler_orbit_denorm denorm_orbit =
+    {
+        0.121,  // a
+        0.872,  // e
+        68.9,   // w
+        231.9,  // omega
+        138.1,  // i
+        2002.27, // T0
+        2002.9  //t0 
+    };
 
-    denorm.a = 0.121;
-    denorm.e = 0.872;
-    denorm.w = 68.9;
-    denorm.omega = 231.9;
-    denorm.i = 138.1;
-    denorm.T0 = 2002.27;
-    denorm.t0 = 2002.9;
+    kepler_orbit orbit;
 
-    double R_0 = 9460730472580800.0 * 26996; // distance in meters
-    double M_0 = 8.54e36; // mass in kg
-
-    kepler_orbit n;
-
-    int t0 = 5;
-    int step = 5000;
-    int steps = 6;
-    int m_val = t0 + step*steps;
+    normalize(&denorm_orbit, &orbit, R_BH_LY, M_BH);
 
     double velo[3];
     double pos[3];
     double ra, dec;
 
-    for (int t = t0; t < m_val; t += step) {
-        denorm.t0 = 2002.9 + (double) t;
-        normalize(&denorm, &n, R_0, M_0);
-        double grav = sqrt(M_0*G/pow(n.a, 3));
-        kepler_to_cart(&n, t, grav, pos, velo);
+    double grav = sqrt( (M_BH/pow(orbit.a, 3)) * G );
+    kepler_to_cart(&orbit, grav, pos, velo);
 
+    ra = atan2(pos[2], sqrt(pow(pos[0],2) + pow(pos[1],2)));
+    dec = atan2(pos[1], pos[0]);
+    std::cout << ra << " " << dec << std::endl;
 
-        ra = atan2(pos[2], sqrt(pow(pos[0],2) + pow(pos[1],2)));
-        dec = atan2(pos[1], pos[0]);
-        std::cout << ra << " " << dec << std::endl;
-    }
+    return 0;
 }
