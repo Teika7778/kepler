@@ -49,8 +49,17 @@ int main() {
         double grav = sqrt( (M_BH/pow(orbit.a, 3)) * G );
         kepler_to_cart(&orbit, grav, pos, velo);
 
-        cur_ra = atan2(pos[2], sqrt(pow(pos[0],2) + pow(pos[1],2)));
-        cur_dec = atan2(pos[1], pos[0]);
+        cur_ra = atan2(pos[2], sqrt(pow(pos[0],2) + pow(pos[1],2))) * 180.0 / M_PI;
+        cur_dec = atan2(pos[1], pos[0]) * 180.0 / M_PI;
+
+        
+
+        while (cur_ra - prev_ra > 180) cur_ra -= 360;
+        while (cur_ra - prev_ra < -180) cur_ra += 360;
+        
+        // Корректировка склонения  
+        while (cur_dec - prev_dec > 180) cur_dec -= 360;
+        while (cur_dec - prev_dec < -180) cur_dec += 360;
 
         if ( i != 0)
         {
