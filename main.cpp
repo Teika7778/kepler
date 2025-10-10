@@ -73,7 +73,7 @@ int main() {
     files[1] = fopen("s38_angles.txt", "w"); 
     files[2] = fopen("s55_angles.txt", "w");
 
-    if (!files[0] || !files[1] || !files[2]) return 0;
+    if (!files[0]  !files[1]  !files[2]) return 0;
 
     for (size_t star=0; star<3; star++)
     {
