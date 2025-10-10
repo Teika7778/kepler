@@ -57,8 +57,8 @@ int main() {
         pos[1] += BH_y;
         pos[2] += BH_z;
 
-        cur_ra = atan2(pos[2], sqrt(pow(pos[0],2) + pow(pos[1],2))) * 180.0 / M_PI;
-        cur_dec = atan2(pos[1], pos[0]) * 180.0 / M_PI;
+        cur_ra = atan2(pos[1], pos[0]) * 180.0 / M_PI;
+        cur_dec = atan2(pos[2], sqrt(pow(pos[0],2) + pow(pos[1],2))) * 180.0 / M_PI;
 
 
 
@@ -66,8 +66,8 @@ int main() {
 
         if ( i != 0)
         {
-            // fprintf(file, "%f %f\n", cur_ra, cur_dec);
-            fprintf(file, "%f %f\n", cur_ra - RA_BH * 180.0 / M_PI, cur_dec - DEC_BH * 180.0 / M_PI);
+            fprintf(file, "%f %f\n", cur_ra + 180 - RA_BH* 180.0 / M_PI, -1 * cur_dec - DEC_BH * 180.0 / M_PI);
+            //fprintf(file, "%f %f\n", cur_ra - RA_BH * 180.0 / M_PI, cur_dec - DEC_BH * 180.0 / M_PI);
         }
 
         prev_ra = cur_ra;
