@@ -6,76 +6,103 @@
 #include "normalize.hpp"
 #include "transform.hpp"
 
-// Сделать на эллипсе 1000 точек так, чтобы они полностью покрывали период
-// Перевести координаты в декартовы
-// Добавить к координатам декартовы координаты Черной дыры
-// Сделать 999 шагов и посчитать изменение ra и dec
-
-
 int main() {
-    kepler_orbit_denorm denorm_orbit =
+
+
+    kepler_orbit_denorm denorm_orbit_s2 =
     {
-        0.121,  // a
-        0.872,  // e
-        68.9,   // w
-        231.9,  // omega
-        138.1,  // i
-        2002.27, // T0
-        2002.27  //t0
+        0.126,  // a
+        0.884,  // e
+        71.36,   // w
+        234.50,  // omega
+        136.78,  // i
+        2002.32, // T0
+        2002.32  //t0
     };
 
-    int fractioning = 1000;
 
-    double delta_t = 16. / fractioning;
+    kepler_orbit_denorm denorm_orbit_s38 =
+    {
+        0.140,  // a
+        0.818,  // e
+        18.4,   // w
+        101.8,  // omega
+        166.22,  // i
+        2003.30, // T0
+        2003.30  //t0
+    };
 
-    double date = 2002.27;
+
+    kepler_orbit_denorm denorm_orbit_s55 =
+    {
+        0.109,  // a
+        0.74,  // e
+        133.5,   // w
+        129.9,  // omega
+        141.7,  // i
+        2009.31, // T0
+        2009.31  //t0
+    };
+
+    kepler_orbit_denorm stars_denorm[3] = 
+    {
+        denorm_orbit_s2,
+        denorm_orbit_s38,
+        denorm_orbit_s55
+    };
+
+
+    int fractioning = 3000;
+
+    double delta_t = 30. / fractioning;
 
     kepler_orbit orbit;
 
     double velo[3];
     double pos[3];
-    double cur_ra, cur_dec, prev_ra, prev_dec;
+    double cur_ra, cur_dec;
 
-    double d = R_BH_LY * LIGHT_YEAR;
-    double BH_x = d * cos(DEC_BH) * cos(RA_BH);
-    double BH_y = d * cos(DEC_BH) * sin(RA_BH);
-    double BH_z = d * sin(DEC_BH);
+    double d = R_BH_LY;
+    
+    double BH_x = (d * cos(DEC_BH) * cos(RA_BH) ) * LIGHT_YEAR;
+    double BH_y = (d * cos(DEC_BH) * sin(RA_BH) ) * LIGHT_YEAR;
+    double BH_z = (d * sin(DEC_BH) )* LIGHT_YEAR ;
 
-    FILE* file = fopen("angles.txt", "w");
+    FILE* files[3];
+    files[0] = fopen("s2_angles.txt", "w");
+    files[1] = fopen("s38_angles.txt", "w"); 
+    files[2] = fopen("s55_angles.txt", "w");
 
-    if (!file) return 0;
+    if (!files[0] || !files[1] || !files[2]) return 0;
 
-    for (size_t i = 0; i< fractioning; i++)
+    for (size_t star=0; star<3; star++)
     {
 
-        denorm_orbit.t0 = denorm_orbit.T0 + i*delta_t;
-        normalize(&denorm_orbit, &orbit, R_BH_LY, M_BH);
-
-        double grav = sqrt( (M_BH/pow(orbit.a, 3)) * G );
-        kepler_to_cart(&orbit, grav, pos, velo);
-        pos[0] += BH_x;
-        pos[1] += BH_y;
-        pos[2] += BH_z;
-
-        cur_ra = atan2(pos[2], sqrt(pow(pos[0],2) + pow(pos[1],2))) * 180.0 / M_PI;
-        cur_dec = atan2(pos[1], pos[0]) * 180.0 / M_PI;
-
-
-
-
-
-        if ( i != 0)
+        for (size_t i = 0; i< fractioning; i++)
         {
-            // fprintf(file, "%f %f\n", cur_ra, cur_dec);
-            fprintf(file, "%f %f\n", cur_ra - RA_BH * 180.0 / M_PI, cur_dec - DEC_BH * 180.0 / M_PI);
-        }
 
-        prev_ra = cur_ra;
-        prev_dec = cur_dec;
+            stars_denorm[star].t0 = stars_denorm[star].T0 + i*delta_t;
+            normalize(&stars_denorm[star], &orbit, R_BH_LY, M_BH);
+
+            double grav = sqrt( (M_BH/pow(orbit.a, 3)) * G );
+            kepler_to_cart(&orbit, grav, pos, velo);
+
+            pos[0] += BH_x;
+            pos[1] += BH_y;
+            pos[2] += BH_z;
+
+            cur_dec = atan2(pos[2], sqrt(pow(pos[0],2) + pow(pos[1],2))) * 180.0 / M_PI;
+            cur_ra = atan2(pos[1], pos[0]) * 180.0 / M_PI;
+
+            fprintf(files[star], "%.15f %.15f\n", (cur_ra + 360 - RA_BH* 180.0 / M_PI) * 3600, (cur_dec - DEC_BH * 180.0 / M_PI) * 3600);
+
+        }
 
     }
 
-    fclose(file);
+    fclose(files[0]);
+    fclose(files[1]);
+    fclose(files[2]);
 
     return 0;
 }
