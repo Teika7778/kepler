@@ -73,7 +73,7 @@ int main() {
     files[1] = fopen("s38_angles.txt", "w"); 
     files[2] = fopen("s55_angles.txt", "w");
 
-    if (!files[0]  !files[1]  !files[2]) return 0;
+    if (!files[0] || !files[1] || !files[2]) return 0;
 
     for (size_t star=0; star<3; star++)
     {
@@ -91,15 +91,11 @@ int main() {
             pos[1] += BH_y;
             pos[2] += BH_z;
 
-        cur_ra = atan2(pos[1], pos[0]) * 180.0 / M_PI;
-        cur_dec = atan2(pos[2], sqrt(pow(pos[0],2) + pow(pos[1],2))) * 180.0 / M_PI;
+            cur_dec = atan2(pos[2], sqrt(pow(pos[0],2) + pow(pos[1],2))) * 180.0 / M_PI;
+            cur_ra = atan2(pos[1], pos[0]) * 180.0 / M_PI;
 
             fprintf(files[star], "%.15f %.15f\n", (cur_ra + 360 - RA_BH* 180.0 / M_PI) * 3600, (cur_dec - DEC_BH * 180.0 / M_PI) * 3600);
 
-        if ( i != 0)
-        {
-            fprintf(file, "%f %f\n", cur_ra + 180 - RA_BH* 180.0 / M_PI, -1 * cur_dec - DEC_BH * 180.0 / M_PI);
-            //fprintf(file, "%f %f\n", cur_ra - RA_BH * 180.0 / M_PI, cur_dec - DEC_BH * 180.0 / M_PI);
         }
 
     }
