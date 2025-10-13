@@ -93,11 +93,12 @@ int main() {
 
             // cur_dec = atan2(pos[2], sqrt(pow(pos[0],2) + pow(pos[1],2))) * 180.0 / M_PI;
             // cur_ra = atan2(pos[1], pos[0]) * 180.0 / M_PI;
-            cur_dec = pos[0];
-            cur_ra = pos[1];
+            cur_dec = pos[0]/(d * LIGHT_YEAR) * 180.0 / M_PI;
+            cur_ra = pos[1]/(d * LIGHT_YEAR) * 180.0 / M_PI;
 
-            fprintf(files[star], "%.15f %.15f\n", (cur_ra + 360 - RA_BH* 180.0 / M_PI) * 3600, (cur_dec - DEC_BH * 180.0 / M_PI) * 3600);
-            //fprintf(files[star], "%.15f %.15f\n", cur_ra*3600, cur_dec*3600);
+            // fprintf(files[star], "%.15f %.15f\n", (cur_ra + 360 - RA_BH* 180.0 / M_PI) * 3600, (cur_dec - DEC_BH * 180.0 / M_PI) * 3600);
+            fprintf(files[star], "%.15f %.15f\n", cur_ra*3600, cur_dec*3600);
+            // fprintf(files[star], "%.15f %.15f\n", (cur_ra + 360 - RA_BH * 180.0 / M_PI) * 3600, (cur_dec - DEC_BH * 180.0 / M_PI) * 3600);
 
         }
 
