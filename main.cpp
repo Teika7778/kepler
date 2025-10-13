@@ -44,7 +44,7 @@ int main() {
         2009.31  //t0
     };
 
-    kepler_orbit_denorm stars_denorm[3] = 
+    kepler_orbit_denorm stars_denorm[3] =
     {
         denorm_orbit_s2,
         denorm_orbit_s38,
@@ -63,14 +63,14 @@ int main() {
     double cur_ra, cur_dec;
 
     double d = R_BH_LY;
-    
+
     double BH_x = (d * cos(DEC_BH) * cos(RA_BH) ) * LIGHT_YEAR;
     double BH_y = (d * cos(DEC_BH) * sin(RA_BH) ) * LIGHT_YEAR;
     double BH_z = (d * sin(DEC_BH) )* LIGHT_YEAR ;
 
     FILE* files[3];
     files[0] = fopen("s2_angles.txt", "w");
-    files[1] = fopen("s38_angles.txt", "w"); 
+    files[1] = fopen("s38_angles.txt", "w");
     files[2] = fopen("s55_angles.txt", "w");
 
     if (!files[0] || !files[1] || !files[2]) return 0;
@@ -87,14 +87,17 @@ int main() {
             double grav = sqrt( (M_BH/pow(orbit.a, 3)) * G );
             kepler_to_cart(&orbit, grav, pos, velo);
 
-            pos[0] += BH_x;
-            pos[1] += BH_y;
-            pos[2] += BH_z;
+            pos[0] += 0;
+            pos[1] += 0;
+            pos[2] += d * LIGHT_YEAR;
 
-            cur_dec = atan2(pos[2], sqrt(pow(pos[0],2) + pow(pos[1],2))) * 180.0 / M_PI;
-            cur_ra = atan2(pos[1], pos[0]) * 180.0 / M_PI;
+            // cur_dec = atan2(pos[2], sqrt(pow(pos[0],2) + pow(pos[1],2))) * 180.0 / M_PI;
+            // cur_ra = atan2(pos[1], pos[0]) * 180.0 / M_PI;
+            cur_dec = pos[0];
+            cur_ra = pos[1];
 
             fprintf(files[star], "%.15f %.15f\n", (cur_ra + 360 - RA_BH* 180.0 / M_PI) * 3600, (cur_dec - DEC_BH * 180.0 / M_PI) * 3600);
+            //fprintf(files[star], "%.15f %.15f\n", cur_ra*3600, cur_dec*3600);
 
         }
 

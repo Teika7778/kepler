@@ -1,4 +1,4 @@
-set terminal wxt size 1280,720 enhanced persist
+set terminal wxt size 720,720 enhanced persist
 set xlabel "ΔR.A. (arcsec)"
 set ylabel "ΔDec. (arcsec)"
 
