@@ -4,3 +4,6 @@ kepler.cbp
 obj/
 bin/
 angles.txt
+s2_angles.txt
+s38_angles.txt
+s55_angles.txt
