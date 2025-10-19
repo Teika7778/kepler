@@ -75,7 +75,7 @@ int main() {
 
     if (!files[0] || !files[1] || !files[2]) return 0;
 
-    for (size_t star=0; star<3; star++)
+    for (size_t star=0; star<1; star++)
     {
 
         for (size_t i = 0; i< fractioning; i++)
@@ -84,21 +84,23 @@ int main() {
             stars_denorm[star].t0 = stars_denorm[star].T0 + i*delta_t;
             normalize(&stars_denorm[star], &orbit, R_BH_LY, M_BH);
 
-            double grav = sqrt( (M_BH/pow(orbit.a, 3)) * G );
+            // double grav = sqrt( (M_BH/pow(orbit.a, 3)) * G );
+            double grav = M_BH * G;
+
             kepler_to_cart(&orbit, grav, pos, velo);
 
             pos[0] += 0;
             pos[1] += 0;
-            pos[2] += d * LIGHT_YEAR;
+            pos[2] += d * LIGHT_YEAR; // Можно опустить
 
             // cur_dec = atan2(pos[2], sqrt(pow(pos[0],2) + pow(pos[1],2))) * 180.0 / M_PI;
             // cur_ra = atan2(pos[1], pos[0]) * 180.0 / M_PI;
-            cur_dec = pos[0]/(d * LIGHT_YEAR) * 180.0 / M_PI;
-            cur_ra = pos[1]/(d * LIGHT_YEAR) * 180.0 / M_PI;
+            cur_dec = pos[0]/pos[2] * 180.0 / M_PI;
+            cur_ra = pos[1]/pos[2] * 180.0 / M_PI;
 
             // fprintf(files[star], "%.15f %.15f\n", (cur_ra + 360 - RA_BH* 180.0 / M_PI) * 3600, (cur_dec - DEC_BH * 180.0 / M_PI) * 3600);
             fprintf(files[star], "%.15f %.15f\n", cur_ra*3600, cur_dec*3600);
-            // fprintf(files[star], "%.15f %.15f\n", (cur_ra + 360 - RA_BH * 180.0 / M_PI) * 3600, (cur_dec - DEC_BH * 180.0 / M_PI) * 3600);
+            printf("%.15f %.15f %.15f\n",stars_denorm[star].T0 + i*delta_t ,cur_ra*3600, cur_dec*3600);
 
         }
 
