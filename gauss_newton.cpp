@@ -10,10 +10,7 @@
 
 double gauss_newton(kepler_orbit_denorm* stars, double M_bh)
 {
-    double Mn = M_bh;
-    double Mn_new;
     int i = 0;
-
 
     FILE* files[3];
     files[0] = fopen("data/s2.txt", "r");
@@ -22,7 +19,7 @@ double gauss_newton(kepler_orbit_denorm* stars, double M_bh)
 
     double arr[MAX_ITER_GAUSS_NEWTON];
 
-    arr[0] = Mn;
+    arr[0] = M_bh;
 
     double numerator, denominator;
     double t, ra, dec, ra_err, dec_err;
@@ -37,9 +34,11 @@ double gauss_newton(kepler_orbit_denorm* stars, double M_bh)
         numerator = 0;
         denominator = 0;
 
+        double sum = 0;
+
         char buffer[256]; // Буфер для хранения строки
 
-        for (size_t file_number=0; file_number<3; file_number++)
+        for (size_t file_number=0; file_number<1; file_number++)
         {
             rewind(files[file_number]);
 
@@ -57,21 +56,29 @@ double gauss_newton(kepler_orbit_denorm* stars, double M_bh)
             r_i[0] = g_i[0] - ra;
             r_i[1] = g_i[1] - dec;
 
+            sum += pow(r_i[0], 2) / pow(ra_err, 2);
+            sum += pow(r_i[1], 2) / pow(dec_err, 2);
+
             derivative_by_m(t, &stars[file_number], d*LIGHT_YEAR, arr[i-1], &dr_i[0], &dr_i[1]);
 
             numerator += ( 1./pow(ra_err, 2) ) * r_i[0] * dr_i[0];
             numerator += ( 1./pow(dec_err, 2) ) * r_i[1] * dr_i[1];
 
             denominator += ( 1./pow(ra_err, 2) ) * pow(dr_i[0], 2);
-            denominator += ( 1./pow(dec_err, 2) * pow(dr_i[1], 2)) ;
+            denominator += ( 1./pow(dec_err, 2) ) * pow(dr_i[1], 2) ;
 
             }
         }
 
+        printf("MASS: %.20e, SS: %.20e\n", arr[i-1], sum);
+
         arr[i] = arr[i-1] - numerator / denominator;
 
-        if (arr[i] - arr[i-1] < 1e6)
-            return arr[i];
+        //if (arr[i] - arr[i-1] < 1e6)
+        //{
+        //    printf("Iterations stopt %d\n", i);
+        //    return arr[i];
+        //}
 
         if (std::isnan(arr[i]) || std::isinf(arr[i])) return arr[i];
     }
@@ -79,7 +86,6 @@ double gauss_newton(kepler_orbit_denorm* stars, double M_bh)
     fclose(files[0]);
     fclose(files[1]);
     fclose(files[2]);
-
 
     return arr[MAX_ITER_GAUSS_NEWTON-1];
 }

@@ -100,7 +100,7 @@ int main() {
     fclose(files[2]);
     */
 
-    printf("%5.e", gauss_newton(stars_denorm, M_BH));
+    double m = gauss_newton(stars_denorm, M_BH);
 
 
     return 0;

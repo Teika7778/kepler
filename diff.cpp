@@ -18,7 +18,7 @@ void derivative_by_m(double dt, kepler_orbit_denorm* denorm, double R_0, double 
     double norm_w = denorm->w * M_PI / 180.0;
     double norm_omega = denorm->omega * M_PI / 180.0;
     double norm_i = denorm->i * M_PI / 180.0;
-    double delta_t = 365.25 * 86400 * dt;
+    double delta_t = dt;
 
     // Матричные коэффициенты
     double A0 = cos(norm_w) * cos(norm_omega) - sin(norm_w) * cos(norm_i) * sin(norm_omega);
@@ -34,7 +34,7 @@ void derivative_by_m(double dt, kepler_orbit_denorm* denorm, double R_0, double 
     double M = fmod(sqrt( (m/pow(norm_a, 3)) * G) *delta_t, 2*M_PI);
     double E = solve_kepler_eq(norm_e, M);
 
-    double E_by_m = M_by_m / (1 - norm_e * E);
+    double E_by_m = M_by_m / (1 - norm_e * cos(E));
     double D_by_m = norm_a * norm_e * sin(E) * E_by_m;
     double v_by_m = E_by_m * sqrt(1 - pow(norm_e, 2))/(1 - norm_e * cos(E));
 
