@@ -5,6 +5,47 @@
 #include "struct.hpp"
 #include "normalize.hpp"
 #include "transform.hpp"
+#include "diff.hpp"
+
+
+
+void warp(double delta_t, double mass, kepler_orbit_denorm orbit_d, double* RA, double* dec) {
+    double pos[3];
+    double velo[3];
+    kepler_orbit orbit;
+
+    orbit_d.t0 = orbit_d.T0 + delta_t;
+    normalize(&orbit_d, &orbit, R_BH_LY, mass);
+
+    // double grav = sqrt( (M_BH/pow(orbit.a, 3)) * G );
+
+    double grav = mass * G;
+    double d = R_BH_LY;
+
+    kepler_to_cart(&orbit, grav, pos, velo);
+
+    pos[0] += 0;
+    pos[1] += 0;
+    pos[2] = d * LIGHT_YEAR;
+
+    // cur_dec = atan2(pos[2], sqrt(pow(pos[0],2) + pow(pos[1],2))) * 180.0 / M_PI;
+    // cur_ra = atan2(pos[1], pos[0]) * 180.0 / M_PI;
+
+    *RA = pos[1]/pos[2] * 180.0 * 3600.0 / M_PI;
+    *dec = pos[0]/pos[2] * 180.0 * 3600.0 / M_PI;
+}
+
+void diff_m(double delta_t, double mass, kepler_orbit_denorm orbit_d, double* dRA, double* ddec, double eps) {
+    double RA_l, DEC_l, RA_r, DEC_r;
+    warp(delta_t, mass-eps, orbit_d, &RA_l, &DEC_l);
+    warp(delta_t, mass+eps, orbit_d, &RA_r, &DEC_r);
+
+    // *dRA = (RA_r - RA_l) / 2*eps;
+    // *ddec = (DEC_r - DEC_l) / 2*eps;
+    *dRA = (RA_r - RA_l) / 2*eps;
+    *ddec = (DEC_r - DEC_l) / 2*eps ;
+}
+
 
 int main() {
 
@@ -55,18 +96,8 @@ int main() {
     int fractioning = 3000;
 
     double delta_t = 30. / fractioning;
-
-    kepler_orbit orbit;
-
-    double velo[3];
-    double pos[3];
     double cur_ra, cur_dec;
-
     double d = R_BH_LY;
-
-    double BH_x = (d * cos(DEC_BH) * cos(RA_BH) ) * LIGHT_YEAR;
-    double BH_y = (d * cos(DEC_BH) * sin(RA_BH) ) * LIGHT_YEAR;
-    double BH_z = (d * sin(DEC_BH) )* LIGHT_YEAR ;
 
     FILE* files[3];
     files[0] = fopen("s2_angles.txt", "w");
@@ -75,35 +106,18 @@ int main() {
 
     if (!files[0] || !files[1] || !files[2]) return 0;
 
-    for (size_t star=0; star<1; star++)
+    for (size_t star=0; star<3; star++)
     {
 
         for (size_t i = 0; i< fractioning; i++)
         {
 
-            stars_denorm[star].t0 = stars_denorm[star].T0 + i*delta_t;
-            normalize(&stars_denorm[star], &orbit, R_BH_LY, M_BH);
-
-            // double grav = sqrt( (M_BH/pow(orbit.a, 3)) * G );
-            double grav = M_BH * G;
-
-            kepler_to_cart(&orbit, grav, pos, velo);
-
-            pos[0] += 0;
-            pos[1] += 0;
-            pos[2] += d * LIGHT_YEAR; // Можно опустить
-
-            // cur_dec = atan2(pos[2], sqrt(pow(pos[0],2) + pow(pos[1],2))) * 180.0 / M_PI;
-            // cur_ra = atan2(pos[1], pos[0]) * 180.0 / M_PI;
-            cur_dec = pos[0]/pos[2] * 180.0 / M_PI;
-            cur_ra = pos[1]/pos[2] * 180.0 / M_PI;
-
-            // fprintf(files[star], "%.15f %.15f\n", (cur_ra + 360 - RA_BH* 180.0 / M_PI) * 3600, (cur_dec - DEC_BH * 180.0 / M_PI) * 3600);
-            fprintf(files[star], "%.15f %.15f\n", cur_ra*3600, cur_dec*3600);
-            printf("%.15f %.15f %.15f\n",stars_denorm[star].T0 + i*delta_t ,cur_ra*3600, cur_dec*3600);
-
+            warp(i*delta_t, M_BH, stars_denorm[star], &cur_ra, &cur_dec);
+            fprintf(files[star], "%.15f %.15f\n", cur_ra, cur_dec);
+            derivative_by_m(i*delta_t,  &stars_denorm[star], d*LIGHT_YEAR, M_BH, &cur_ra, &cur_dec);
+            //diff_m(i*delta_t, M_BH, stars_denorm[star], &cur_ra, &cur_dec, 1e+26);
+            printf("%e %e\n", cur_ra, cur_dec);
         }
-
     }
 
     fclose(files[0]);

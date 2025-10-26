@@ -1,5 +1,4 @@
 #include <cmath>
-
 #include "transform.hpp"
 
 #define MAX_ITER_NEWTON 100
@@ -28,7 +27,7 @@ double newtons_method(double E_0, double e, double M)
         // itaration step
         arr[i] = arr[i-1] - kepler_equation(arr[i-1], e, M) / kepler_equation_derivative(arr[i-1], e);
 
-        if (arr[i] - arr[i-1] == 0) // if value didnt change - no sense going more 
+        if (arr[i] - arr[i-1] == 0) // if value didnt change - no sense going more
             return arr[i];
         if (kepler_equation(arr[i], e, M) == 0) // root found
             return arr[i];
