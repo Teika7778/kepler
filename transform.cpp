@@ -1,5 +1,7 @@
 #include <cmath>
 #include "transform.hpp"
+#include "constans.hpp"
+#include "normalize.hpp"
 
 #define MAX_ITER_NEWTON 100
 
@@ -110,4 +112,31 @@ void kepler_to_cart(kepler_orbit* orbit, double grav_param,
     transform_cords(r, orbit, pos);
     transform_cords(u, orbit, velo);
 
+}
+
+
+void warp(double delta_t, double mass, kepler_orbit_denorm orbit_d, double* RA, double* dec) {
+    double pos[3];
+    double velo[3];
+    kepler_orbit orbit;
+
+    orbit_d.t0 = orbit_d.T0 + delta_t;
+    normalize(&orbit_d, &orbit, R_BH_LY, mass);
+
+    // double grav = sqrt( (M_BH/pow(orbit.a, 3)) * G );
+
+    double grav = mass * G;
+    double d = R_BH_LY;
+
+    kepler_to_cart(&orbit, grav, pos, velo);
+
+    pos[0] += 0;
+    pos[1] += 0;
+    pos[2] = d * LIGHT_YEAR;
+
+    // cur_dec = atan2(pos[2], sqrt(pow(pos[0],2) + pow(pos[1],2))) * 180.0 / M_PI;
+    // cur_ra = atan2(pos[1], pos[0]) * 180.0 / M_PI;
+
+    *RA = pos[1]/pos[2] * 180.0 * 3600.0 / M_PI;
+    *dec = pos[0]/pos[2] * 180.0 * 3600.0 / M_PI;
 }

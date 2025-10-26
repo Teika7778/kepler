@@ -28,3 +28,5 @@ void transform_cords(double* s, kepler_orbit* orbit, double* ret);
 
 void kepler_to_cart(kepler_orbit* orbit, double grav_param,
                     double* pos, double* velo);
+
+void warp(double delta_t, double mass, kepler_orbit_denorm orbit_d, double* RA, double* dec);

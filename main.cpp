@@ -6,34 +6,8 @@
 #include "normalize.hpp"
 #include "transform.hpp"
 #include "diff.hpp"
+#include "gauss_newton.hpp"
 
-
-
-void warp(double delta_t, double mass, kepler_orbit_denorm orbit_d, double* RA, double* dec) {
-    double pos[3];
-    double velo[3];
-    kepler_orbit orbit;
-
-    orbit_d.t0 = orbit_d.T0 + delta_t;
-    normalize(&orbit_d, &orbit, R_BH_LY, mass);
-
-    // double grav = sqrt( (M_BH/pow(orbit.a, 3)) * G );
-
-    double grav = mass * G;
-    double d = R_BH_LY;
-
-    kepler_to_cart(&orbit, grav, pos, velo);
-
-    pos[0] += 0;
-    pos[1] += 0;
-    pos[2] = d * LIGHT_YEAR;
-
-    // cur_dec = atan2(pos[2], sqrt(pow(pos[0],2) + pow(pos[1],2))) * 180.0 / M_PI;
-    // cur_ra = atan2(pos[1], pos[0]) * 180.0 / M_PI;
-
-    *RA = pos[1]/pos[2] * 180.0 * 3600.0 / M_PI;
-    *dec = pos[0]/pos[2] * 180.0 * 3600.0 / M_PI;
-}
 
 void diff_m(double delta_t, double mass, kepler_orbit_denorm orbit_d, double* dRA, double* ddec, double eps) {
     double RA_l, DEC_l, RA_r, DEC_r;
@@ -93,6 +67,7 @@ int main() {
     };
 
 
+    /*
     int fractioning = 3000;
 
     double delta_t = 30. / fractioning;
@@ -123,6 +98,10 @@ int main() {
     fclose(files[0]);
     fclose(files[1]);
     fclose(files[2]);
+    */
+
+    printf("%5.e", gauss_newton(stars_denorm, M_BH));
+
 
     return 0;
 }

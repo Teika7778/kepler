@@ -50,7 +50,7 @@ void derivative_by_m(double dt, kepler_orbit_denorm* denorm, double R_0, double 
     double pos1_by_m = x_by_m * A0 - y_by_m * B0;
     double pos0_by_m = x_by_m * A1 - y_by_m * B1;
 
-    double pos2 = R_BH_LY * LIGHT_YEAR;
+    double pos2 = (double) R_BH_LY * (double) LIGHT_YEAR;
 
     *ra = (180.0 * 3600.0) / (pos2 * M_PI) * pos1_by_m;
     *dec = (180.0 * 3600.0) / (pos2 * M_PI) * pos0_by_m;
