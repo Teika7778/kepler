@@ -1,6 +1,7 @@
 #include <cmath>
-
 #include "transform.hpp"
+#include "constans.hpp"
+#include "normalize.hpp"
 
 #define MAX_ITER_NEWTON 100
 
@@ -28,7 +29,7 @@ double newtons_method(double E_0, double e, double M)
         // itaration step
         arr[i] = arr[i-1] - kepler_equation(arr[i-1], e, M) / kepler_equation_derivative(arr[i-1], e);
 
-        if (arr[i] - arr[i-1] == 0) // if value didnt change - no sense going more 
+        if (arr[i] - arr[i-1] == 0) // if value didnt change - no sense going more
             return arr[i];
         if (kepler_equation(arr[i], e, M) == 0) // root found
             return arr[i];
@@ -111,4 +112,26 @@ void kepler_to_cart(kepler_orbit* orbit, double grav_param,
     transform_cords(r, orbit, pos);
     transform_cords(u, orbit, velo);
 
+}
+
+
+void warp(double delta_t, double mass, kepler_orbit_denorm orbit_d, double* RA, double* dec) {
+    double pos[3];
+    double velo[3];
+    kepler_orbit orbit;
+
+    orbit_d.t0 = orbit_d.T0 + delta_t;
+    normalize(&orbit_d, &orbit, R_BH_LY, mass);
+
+    double grav = mass * G;
+    double d = R_BH_LY;
+
+    kepler_to_cart(&orbit, grav, pos, velo);
+
+    pos[0] += 0;
+    pos[1] += 0;
+    pos[2] = d * LIGHT_YEAR;
+
+    *RA = pos[1]/pos[2] * 180.0 * 3600.0 / M_PI;
+    *dec = pos[0]/pos[2] * 180.0 * 3600.0 / M_PI;
 }
