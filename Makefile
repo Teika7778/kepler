@@ -19,5 +19,5 @@ diff.o: diff.cpp diff.hpp
 	g++ -g -c diff.cpp -o diff.o
 
 clean:
-	rm *.o
+	rm *.o main
 

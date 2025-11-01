@@ -55,3 +55,21 @@ void derivative_by_m(double dt, kepler_orbit_denorm* denorm, double R_0, double 
     *ra = (180.0 * 3600.0) / (pos2 * M_PI) * pos1_by_m;
     *dec = (180.0 * 3600.0) / (pos2 * M_PI) * pos0_by_m;
 }
+
+
+
+void count_diff(double dt, kepler_orbit_denorm denorm, double m, double* ra, double* dec, double eps)
+{
+
+    double coords_1[2];
+    double coords_2[2];
+
+    warp(dt - denorm.T0, m+eps, denorm, &coords_1[0], &coords_1[1]);
+
+    warp(dt - denorm.T0, m-eps, denorm, &coords_2[0], &coords_2[1]);
+
+    *ra = ( coords_1[0] - coords_2[0] ) / (2*eps);
+
+    *dec = ( coords_1[1] - coords_2[1] ) / (2*eps);
+  
+}

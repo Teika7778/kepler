@@ -100,7 +100,18 @@ int main() {
     fclose(files[2]);
     */
 
-    double m = gauss_newton(stars_denorm, M_BH);
+    eval(stars_denorm, 1e10);
+    eval(stars_denorm, 1e20);
+    eval(stars_denorm, 1e30);
+    eval(stars_denorm, M_BH);
+    eval(stars_denorm, 1e40);
+    eval(stars_denorm, 1e50);
+    eval(stars_denorm, 1e60);
+    eval(stars_denorm, 1e70);
+
+    printf("\nGAUSS\n\n");
+
+    gauss_newton(stars_denorm, 1e30);
 
 
     return 0;
