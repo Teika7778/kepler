@@ -1,7 +1,7 @@
 all: main
 
-main: main.o normalize.o transform.o gauss_newton.o diff.o
-	g++ -g main.o normalize.o transform.o gauss_newton.o diff.o -o main
+main: main.o normalize.o transform.o gauss_newton.o diff.o integration.o
+	g++ -g main.o normalize.o transform.o gauss_newton.o diff.o integration.o -o main
 
 main.o: main.cpp 
 	g++ -g -c main.cpp -o main.o
@@ -17,6 +17,9 @@ gauss_newton.o: gauss_newton.cpp gauss_newton.hpp
 
 diff.o: diff.cpp diff.hpp
 	g++ -g -c diff.cpp -o diff.o
+
+integration.o: integration.cpp integration.hpp
+	g++ -g -c integration.cpp -o integration.o
 
 clean:
 	rm *.o main
