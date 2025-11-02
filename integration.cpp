@@ -49,7 +49,8 @@ void init_states(double* x)
         denorm_orbit_s38,
         denorm_orbit_s55
     };
-
+    double d = (double) R_BH_LY * (double) LIGHT_YEAR;
+    double c = 180 / M_PI * 3600;
     for(int i=0; i<3; i++)
     {
 
@@ -61,7 +62,6 @@ void init_states(double* x)
         normalize(&stars_denorm[i], &orbit, R_BH_LY, M_BH);
 
         double grav = M_BH * G;
-        double d = R_BH_LY;
 
         kepler_to_cart(&orbit, grav, pos, velo);
 
@@ -70,30 +70,35 @@ void init_states(double* x)
             x[i * STATE_SIZE + j] = pos[j];
             x[i * STATE_SIZE + j + 3] = velo[j];
         }
-        
-
     }
+    x[0] *= c/d;
+    x[1] *= c/d;
+    x[6] *= c/d;
+    x[7] *= c/d;
+    x[12] *= c/d;
+    x[13] *= c/d;
 
-    
+
 }
 
 void dxdt(double t, double* x, double* xdot, void* data)
 {
+    double d = (double) R_BH_LY * (double) LIGHT_YEAR;
+    double c = 180 / M_PI * 3600;
     struct simulation_data* sim_data = (struct simulation_data*)(data);
 
     for (int i=0; i<sim_data->NBODIES; i++)
     {
-        xdot[i*STATE_SIZE] = x[i*STATE_SIZE+3];
-        xdot[i*STATE_SIZE+1] = x[i*STATE_SIZE+4];
+        xdot[i*STATE_SIZE] = c/d*x[i*STATE_SIZE+3];
+        xdot[i*STATE_SIZE+1] = c/d*x[i*STATE_SIZE+4];
         xdot[i*STATE_SIZE+2] = x[i*STATE_SIZE+5];
 
-        
-        double rx = x[i*STATE_SIZE] - 0;  // относительно центра (черной дыры)
-        double ry = x[i*STATE_SIZE+1] - 0;
-        double rz = x[i*STATE_SIZE+2] - 0;
 
-        double r3 = pow(sqrt(rx*rx + ry*ry + rz*rz), 3);
-        
+        double rx = x[i*STATE_SIZE] * d / c  ;  // относительно центра (черной дыры)
+        double ry = x[i*STATE_SIZE+1] * d / c ;
+        double rz = x[i*STATE_SIZE+2];
+        //double r3 = pow(d, 3);
+        double r3 = pow(sqrt(rx*rx+ry*ry+rz*rz), 3);
         xdot[i*STATE_SIZE+3] = (-sim_data->Grav*sim_data->M_bh * rx) / r3;
         xdot[i*STATE_SIZE+4] = (-sim_data->Grav*sim_data->M_bh * ry) / r3;
         xdot[i*STATE_SIZE+5] = (-sim_data->Grav*sim_data->M_bh * rz) / r3;
