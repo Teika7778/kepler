@@ -34,6 +34,8 @@ rk4 rk_4 = {NULL, NULL, NULL, NULL, NULL};  // Глобальная переме
 
 int main() {
 
+    double d = (double) R_BH_LY * (double) LIGHT_YEAR;
+    double c = 180 / M_PI * 3600;
     // init states
 
     FILE* file_s2 = fopen("integration_s2.txt", "w");
@@ -56,6 +58,7 @@ int main() {
     while (simulationTime < 1e9) // изменить
     {
         //std::cout << x[0] << " " << x[1] << " " << x[2] <<std::endl;
+
         fprintf(file_s2, "%lf %lf\n", x[0], x[1]);
         fprintf(file_s38, "%lf %lf\n", x[6], x[7]);
         fprintf(file_s55, "%lf %lf\n", x[12], x[13]);
@@ -70,7 +73,7 @@ int main() {
         printf("%.10e %.10e %.10e\n", dxdm[0], dxdm[1], dxdm[2]);
         simulationTime += dt;  // Увеличиваем время симуляции
     }
-    
+
     rk4Free(&rk_4);
 
     free(x_for_deriv);

@@ -49,7 +49,8 @@ void init_states(double* x)
         denorm_orbit_s38,
         denorm_orbit_s55
     };
-
+    double d = (double) R_BH_LY * (double) LIGHT_YEAR;
+    double c = 180 / M_PI * 3600;
     for(int i=0; i<3; i++)
     {
 
@@ -61,7 +62,6 @@ void init_states(double* x)
         normalize(&stars_denorm[i], &orbit, R_BH_LY, M_BH);
 
         double grav = M_BH * G;
-        double d = R_BH_LY;
 
         kepler_to_cart(&orbit, grav, pos, velo);
 
