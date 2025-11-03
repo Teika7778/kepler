@@ -4,8 +4,13 @@
 // Установление начальных координат
 void init_states(double* x);
 
+void init_deriv(double* x);
+
 // Взятие производной у массива тел
 void dxdt(double t, double* x, double* xdot, void* data);
+
+// Вычисление изозронной производной
+void dxdmdt(double t, double* x, double* xdot, void* data);
 
 // Численное решение ОДУ (Рунге-Кутта 4)
 void ode(rk4* self, double* x, int n, double t0, double t1, 

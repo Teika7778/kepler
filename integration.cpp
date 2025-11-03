@@ -67,40 +67,115 @@ void init_states(double* x)
 
         for (int j = 0; j < 3; j++)
         {
-            x[i * STATE_SIZE + j] = pos[j];
-            x[i * STATE_SIZE + j + 3] = velo[j];
+            x[i * STATE_SIZE_STAR + j] = pos[j];
+            x[i * STATE_SIZE_STAR + j + 3] = velo[j];
         }
-        
-
     }
 
-    
+    double d = (double) R_BH_LY * (double) LIGHT_YEAR;
+    double c = 180 / M_PI * 3600;
+
+    x[0] *= c/d;
+    x[1] *= c/d;
+    x[6] *= c/d;
+    x[7] *= c/d;
+    x[12] *= c/d;
+    x[13] *= c/d;
 }
 
-void dxdt(double t, double* x, double* xdot, void* data)
+void init_deriv(double* x)
 {
-    struct simulation_data* sim_data = (struct simulation_data*)(data);
+    for (int i=0; i<3; i++)
+    {
+        x[i] = 0;
+        x[i+1] = 0;
+        x[i+2] = 0;
+        x[i+3] = 0;
+    }
+}
+
+void dxdmdt(double t, double* x, double* xdot, void* data)
+{
+    struct simulation_data_deriv* sim_data = (struct simulation_data_deriv*)(data);
+
+    double d = (double) R_BH_LY * (double) LIGHT_YEAR;
+    double c = 180 / M_PI * 3600;
 
     for (int i=0; i<sim_data->NBODIES; i++)
     {
-        xdot[i*STATE_SIZE] = x[i*STATE_SIZE+3];
-        xdot[i*STATE_SIZE+1] = x[i*STATE_SIZE+4];
-        xdot[i*STATE_SIZE+2] = x[i*STATE_SIZE+5];
+        xdot[i*STATE_SIZE_DERIV] = c/d *x[i*STATE_SIZE_DERIV+3];
+        xdot[i*STATE_SIZE_DERIV+1] = c/d * x[i*STATE_SIZE_DERIV+4];
+        xdot[i*STATE_SIZE_DERIV+2] = x[i*STATE_SIZE_DERIV+5];
 
-        
-        double rx = x[i*STATE_SIZE] - 0;  // относительно центра (черной дыры)
-        double ry = x[i*STATE_SIZE+1] - 0;
-        double rz = x[i*STATE_SIZE+2] - 0;
+        double x_sim= sim_data->x[i];
+        double y_sim = sim_data->y[i];
+        double z_sim = sim_data->z[i];
 
-        double r3 = pow(sqrt(rx*rx + ry*ry + rz*rz), 3);
+        double dxdm = x[i*STATE_SIZE_DERIV];
+        double dydm = x[i*STATE_SIZE_DERIV+1];
+        double dzdm = x[i*STATE_SIZE_DERIV+2];
+
+        double r = sqrt(pow(x_sim, 2) + pow(y_sim, 2) + pow(z_sim, 2));
+
+        double r3 = pow(r, 3);
+        double r5 = pow(r, 5);
         
-        xdot[i*STATE_SIZE+3] = (-sim_data->Grav*sim_data->M_bh * rx) / r3;
-        xdot[i*STATE_SIZE+4] = (-sim_data->Grav*sim_data->M_bh * ry) / r3;
-        xdot[i*STATE_SIZE+5] = (-sim_data->Grav*sim_data->M_bh * rz) / r3;
+         // Коэффициенты матрицы Якоби
+        double Axx = -sim_data->Grav * sim_data->M_bh * (1.0/r3 - 3.0*x_sim*x_sim/r5);
+        double Axy = 3.0 * sim_data->Grav * sim_data->M_bh * x_sim * y_sim / r5;
+        double Axz = 3.0 * sim_data->Grav * sim_data->M_bh * x_sim * z_sim / r5;
+        
+        double Ayx = Axy;  // Симметрия
+        double Ayy = -sim_data->Grav * sim_data->M_bh * (1.0/r3 - 3.0*y_sim*y_sim/r5);
+        double Ayz = 3.0 * sim_data->Grav * sim_data->M_bh * y_sim * z_sim / r5;
+        
+        double Azx = Axz;  // Симметрия
+        double Azy = Ayz;  // Симметрия
+        double Azz = -sim_data->Grav * sim_data->M_bh * (1.0/r3 - 3.0*z_sim*z_sim/r5);
+        
+        // Прямые производные силы по массе
+        double dFxdM = -sim_data->Grav * x_sim / r3;
+        double dFydM = -sim_data->Grav * y_sim / r3;
+        double dFzdM = -sim_data->Grav * z_sim / r3;
+        
+        // Уравнения для производных скоростей по массе
+        // d(dvx/dM)/dt = Axx*dxdm + Axy*dydm + Axz*dzdm + dFxdM
+        xdot[i*STATE_SIZE_DERIV+3] = Axx * dxdm + Axy * dydm + Axz * dzdm + dFxdM;
+        
+        // d(dvy/dM)/dt = Ayx*dxdm + Ayy*dydm + Ayz*dzdm + dFydM  
+        xdot[i*STATE_SIZE_DERIV+4] = Ayx * dxdm + Ayy * dydm + Ayz * dzdm + dFydM;
+        
+        // d(dvz/dM)/dt = Azx*dxdm + Azy*dydm + Azz*dzdm + dFzdM
+        xdot[i*STATE_SIZE_DERIV+5] = Azx * dxdm + Azy * dydm + Azz * dzdm + dFzdM;
     }
 }
 
 
+void dxdt(double t, double* x, double* xdot, void* data)
+{
+    struct simulation_data_star* sim_data = (struct simulation_data_star*)(data);
+
+    double d = (double) R_BH_LY * (double) LIGHT_YEAR;
+    double c = 180 / M_PI * 3600;
+
+    for (int i=0; i<sim_data->NBODIES; i++)
+    {
+        xdot[i*STATE_SIZE_STAR] = c/d * x[i*STATE_SIZE_STAR+3];
+        xdot[i*STATE_SIZE_STAR+1] = c/d * x[i*STATE_SIZE_STAR+4];
+        xdot[i*STATE_SIZE_STAR+2] = x[i*STATE_SIZE_STAR+5];
+
+        
+        double rx = x[i*STATE_SIZE_STAR] * d /c;  // относительно центра (черной дыры)
+        double ry = x[i*STATE_SIZE_STAR+1] * d/ c;
+        double rz = x[i*STATE_SIZE_STAR+2];
+
+        double r3 = pow(sqrt(rx*rx + ry*ry + rz*rz), 3);
+        
+        xdot[i*STATE_SIZE_STAR+3] = (-sim_data->Grav*sim_data->M_bh * rx) / r3;
+        xdot[i*STATE_SIZE_STAR+4] = (-sim_data->Grav*sim_data->M_bh * ry) / r3;
+        xdot[i*STATE_SIZE_STAR+5] = (-sim_data->Grav*sim_data->M_bh * rz) / r3;
+    }
+}
 
 
 void ode(rk4* self, double* x, int n, double t0, double t1, void (*f)(double, double*, double*, void*), void* data)
