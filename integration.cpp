@@ -49,8 +49,7 @@ void init_states(double* x)
         denorm_orbit_s38,
         denorm_orbit_s55
     };
-    double d = (double) R_BH_LY * (double) LIGHT_YEAR;
-    double c = 180 / M_PI * 3600;
+
     for(int i=0; i<3; i++)
     {
 
@@ -107,9 +106,9 @@ void dxdmdt(double t, double* x, double* xdot, void* data)
         xdot[i*STATE_SIZE_DERIV+1] = c/d * x[i*STATE_SIZE_DERIV+4];
         xdot[i*STATE_SIZE_DERIV+2] = x[i*STATE_SIZE_DERIV+5];
 
-        double x_sim= sim_data->x[i];
-        double y_sim = sim_data->y[i];
-        double z_sim = sim_data->z[i];
+        double x_sim= d/c * sim_data->x[i];
+        double y_sim = d/c * sim_data->y[i];
+        double z_sim = d/c * sim_data->z[i];
 
         double dxdm = x[i*STATE_SIZE_DERIV];
         double dydm = x[i*STATE_SIZE_DERIV+1];
