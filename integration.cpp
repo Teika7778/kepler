@@ -6,10 +6,33 @@
 #include "constans.hpp"
 #include "normalize.hpp"
 
+void init_star_state(double* x, kepler_orbit_denorm orbit_denorm, double M_bh)
+{
+    double pos[3];
+    double velo[3];
+    kepler_orbit orbit;
+    orbit_denorm.t0 = orbit_denorm.T0 ;
+    normalize(&orbit_denorm, &orbit, R_BH_LY, M_bh);
+    double grav = M_bh * G;
+    kepler_to_cart(&orbit, grav, pos, velo);
+    for (int j = 0; j < 3; j++)
+    {
+        x[j] = pos[j];
+        x[j + 3] = velo[j];
+    }
+
+    double d = (double) R_BH_LY * (double) LIGHT_YEAR;
+    double c = 180. / M_PI * 3600.;
+
+    x[0] *= c/d;
+    x[1] *= c/d;
+}
+
+
 void init_states(double* x)
 {
 
-    kepler_orbit_denorm denorm_orbit_s2 =
+        kepler_orbit_denorm denorm_orbit_s2 =
     {
         0.126,  // a
         0.884,  // e
@@ -19,7 +42,6 @@ void init_states(double* x)
         2002.32, // T0
         2002.32  //t0
     };
-
     kepler_orbit_denorm denorm_orbit_s38 =
     {
         0.140,  // a
@@ -30,8 +52,6 @@ void init_states(double* x)
         2003.30, // T0
         2003.30  //t0
     };
-
-
     kepler_orbit_denorm denorm_orbit_s55 =
     {
         0.109,  // a
@@ -42,7 +62,6 @@ void init_states(double* x)
         2009.31, // T0
         2009.31  //t0
     };
-
     kepler_orbit_denorm stars_denorm[3] =
     {
         denorm_orbit_s2,
@@ -72,7 +91,7 @@ void init_states(double* x)
     }
 
     double d = (double) R_BH_LY * (double) LIGHT_YEAR;
-    double c = 180 / M_PI * 3600;
+    double c = 180. / M_PI * 3600.;
 
     x[0] *= c/d;
     x[1] *= c/d;
@@ -98,7 +117,7 @@ void dxdmdt(double t, double* x, double* xdot, void* data)
     struct simulation_data_deriv* sim_data = (struct simulation_data_deriv*)(data);
 
     double d = (double) R_BH_LY * (double) LIGHT_YEAR;
-    double c = 180 / M_PI * 3600;
+    double c = 180. / M_PI * 3600.;
 
     for (int i=0; i<sim_data->NBODIES; i++)
     {
@@ -226,4 +245,34 @@ void rk4Free(rk4* rk)
     free(rk->k3);
     free(rk->k4);
     free(rk->tmp);
+}
+
+
+void wrap_integration(double* x, double* deriv, double t, double M_bh, rk4 rk_4, double** arrays_for_deriv)
+{
+    double dt = 86400;   // Шаг - день
+
+    struct simulation_data_star data = {G, M_bh, 1};  // Дополнительные данные для ode
+
+    double* x_for_deriv = arrays_for_deriv[0];
+    double* y_for_deriv = arrays_for_deriv[1];
+    double* z_for_deriv = arrays_for_deriv[2];
+
+    struct simulation_data_deriv data_deriv = {G, M_bh, 1, x_for_deriv, y_for_deriv, z_for_deriv};
+
+    double local_time = 0;
+
+    while (local_time < t) // изменить
+    {
+        ode(&rk_4, x, 1*STATE_SIZE_STAR, local_time, local_time+dt, dxdt, &data);
+        for (int i=0; i < 1; i++)
+        {
+            data_deriv.x[i] = x[i*STATE_SIZE_STAR];
+            data_deriv.y[i] = x[i*STATE_SIZE_STAR+1];
+            data_deriv.z[i] = x[i*STATE_SIZE_STAR+2];
+        }
+        ode(&rk_4, deriv, 1*STATE_SIZE_DERIV, local_time, local_time+dt, dxdmdt, &data_deriv);
+        local_time += dt;  // Увеличиваем время симуляции
+    }
+
 }
