@@ -7,8 +7,9 @@
 #include "transform.hpp"
 #include "diff.hpp"
 #include "gauss_newton.hpp"
+#include "integration.hpp"
 
-
+/*
 void diff_m(double delta_t, double mass, kepler_orbit_denorm orbit_d, double* dRA, double* ddec, double eps) {
     double RA_l, DEC_l, RA_r, DEC_r;
     warp(delta_t, mass-eps, orbit_d, &RA_l, &DEC_l);
@@ -20,11 +21,75 @@ void diff_m(double delta_t, double mass, kepler_orbit_denorm orbit_d, double* dR
     *ddec = (DEC_r - DEC_l) / 2*eps ;
 }
 
+#define NBODIES 3 //Количество тел в симуляции
+
+
+double x[NBODIES*STATE_SIZE_STAR]; // Глобальный массив тел
+
+double dxdm[NBODIES*STATE_SIZE_DERIV];
+
+double simulationTime = 0; // Глобальная переменная времени
+
+rk4 rk_4 = {NULL, NULL, NULL, NULL, NULL};  // Глобальная переменная структуры РК-4
 
 int main() {
 
+    double d = (double) R_BH_LY * (double) LIGHT_YEAR;
+    double c = 180 / M_PI * 3600;
+    // init states
 
-    kepler_orbit_denorm denorm_orbit_s2 =
+    FILE* file_s2 = fopen("integration_s2.txt", "w");
+    FILE* file_s38 = fopen("integration_s38.txt", "w");
+    FILE* file_s55 = fopen("integration_s55.txt", "w");
+
+    init_states(x);
+    init_deriv(dxdm);
+
+    double dt = 86400;   // Шаг - неделя
+
+    struct simulation_data_star data = {G, M_BH, NBODIES};  // Дополнительные данные для ode
+
+    double* x_for_deriv = (double*)malloc(sizeof(double)*NBODIES);
+    double* y_for_deriv = (double*)malloc(sizeof(double)*NBODIES);
+    double* z_for_deriv = (double*)malloc(sizeof(double)*NBODIES);
+
+    struct simulation_data_deriv data_deriv = {G, M_BH, NBODIES, x_for_deriv, y_for_deriv, z_for_deriv};
+
+    while (simulationTime < 25.261*365*86400) // изменить
+    {
+        //std::cout << x[0] << " " << x[1] << " " << x[2] <<std::endl;
+
+        fprintf(file_s2, "%lf %lf\n", x[1], x[0]);
+        fprintf(file_s38, "%lf %lf\n", x[7], x[6]);
+        fprintf(file_s55, "%lf %lf\n", x[13], x[12]);
+        ode(&rk_4, x, NBODIES*STATE_SIZE_STAR, simulationTime, simulationTime+dt, dxdt, &data);
+        for (int i=0; i < NBODIES; i++)
+        {
+            data_deriv.x[i] = x[i*STATE_SIZE_STAR];
+            data_deriv.y[i] = x[i*STATE_SIZE_STAR+1];
+            data_deriv.z[i] = x[i*STATE_SIZE_STAR+2];
+        }
+        ode(&rk_4, dxdm, NBODIES*STATE_SIZE_DERIV, simulationTime, simulationTime+dt, dxdmdt, &data_deriv);
+        simulationTime += dt;  // Увеличиваем время симуляции
+    }
+
+    rk4Free(&rk_4);
+
+    free(x_for_deriv);
+    free(y_for_deriv);
+    free(z_for_deriv);
+
+    fclose(file_s2);
+    fclose(file_s38);
+    fclose(file_s55);
+
+    return 0;
+}*/
+
+
+int main()
+{
+        kepler_orbit_denorm denorm_orbit_s2 =
     {
         0.126,  // a
         0.884,  // e
@@ -34,8 +99,6 @@ int main() {
         2002.32, // T0
         2002.32  //t0
     };
-
-
     kepler_orbit_denorm denorm_orbit_s38 =
     {
         0.140,  // a
@@ -46,8 +109,6 @@ int main() {
         2003.30, // T0
         2003.30  //t0
     };
-
-
     kepler_orbit_denorm denorm_orbit_s55 =
     {
         0.109,  // a
@@ -58,7 +119,6 @@ int main() {
         2009.31, // T0
         2009.31  //t0
     };
-
     kepler_orbit_denorm stars_denorm[3] =
     {
         denorm_orbit_s2,
@@ -66,53 +126,5 @@ int main() {
         denorm_orbit_s55
     };
 
-
-    /*
-    int fractioning = 3000;
-
-    double delta_t = 30. / fractioning;
-    double cur_ra, cur_dec;
-    double d = R_BH_LY;
-
-    FILE* files[3];
-    files[0] = fopen("s2_angles.txt", "w");
-    files[1] = fopen("s38_angles.txt", "w");
-    files[2] = fopen("s55_angles.txt", "w");
-
-    if (!files[0] || !files[1] || !files[2]) return 0;
-
-    for (size_t star=0; star<3; star++)
-    {
-
-        for (size_t i = 0; i< fractioning; i++)
-        {
-
-            warp(i*delta_t, M_BH, stars_denorm[star], &cur_ra, &cur_dec);
-            fprintf(files[star], "%.15f %.15f\n", cur_ra, cur_dec);
-            derivative_by_m(i*delta_t,  &stars_denorm[star], d*LIGHT_YEAR, M_BH, &cur_ra, &cur_dec);
-            //diff_m(i*delta_t, M_BH, stars_denorm[star], &cur_ra, &cur_dec, 1e+26);
-            printf("%e %e\n", cur_ra, cur_dec);
-        }
-    }
-
-    fclose(files[0]);
-    fclose(files[1]);
-    fclose(files[2]);
-    */
-
-    eval(stars_denorm, 1e10);
-    eval(stars_denorm, 1e20);
-    eval(stars_denorm, 1e30);
-    eval(stars_denorm, M_BH);
-    eval(stars_denorm, 1e40);
-    eval(stars_denorm, 1e50);
-    eval(stars_denorm, 1e60);
-    eval(stars_denorm, 1e70);
-
-    printf("\nGAUSS\n\n");
-
-    gauss_newton(stars_denorm, 1e30);
-
-
-    return 0;
+    gauss_newton_2(stars_denorm, 1e32);
 }
