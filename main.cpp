@@ -45,7 +45,7 @@ int main() {
     init_states(x);
     init_deriv(dxdm);
 
-    double dt = -86400;   // Шаг - неделя
+    double dt = 86400;   // Шаг - неделя
 
     struct simulation_data_star data = {G, M_BH, NBODIES};  // Дополнительные данные для ode
 
@@ -55,7 +55,7 @@ int main() {
 
     struct simulation_data_deriv data_deriv = {G, M_BH, NBODIES, x_for_deriv, y_for_deriv, z_for_deriv};
 
-    while (simulationTime > -4e9) // изменить
+    while (simulationTime < 25.261*365*86400) // изменить
     {
         //std::cout << x[0] << " " << x[1] << " " << x[2] <<std::endl;
 
@@ -84,9 +84,9 @@ int main() {
     fclose(file_s55);
 
     return 0;
-}
+}*/
 
-*/
+
 int main()
 {
         kepler_orbit_denorm denorm_orbit_s2 =
@@ -126,5 +126,5 @@ int main()
         denorm_orbit_s55
     };
 
-    gauss_newton_2(stars_denorm, 1e35);
+    gauss_newton_2(stars_denorm, 1e32);
 }

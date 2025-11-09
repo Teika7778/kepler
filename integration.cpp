@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <cmath>
+#include <iostream>
 
 #include "integration.hpp"
 #include "transform.hpp"
@@ -121,13 +122,13 @@ void dxdmdt(double t, double* x, double* xdot, void* data)
 
     for (int i=0; i<sim_data->NBODIES; i++)
     {
-        xdot[i*STATE_SIZE_DERIV] = c/d *x[i*STATE_SIZE_DERIV+3];
-        xdot[i*STATE_SIZE_DERIV+1] = c/d * x[i*STATE_SIZE_DERIV+4];
+        xdot[i*STATE_SIZE_DERIV]   = (c/d) *x[i*STATE_SIZE_DERIV+3];
+        xdot[i*STATE_SIZE_DERIV+1] = (c/d)*x[i*STATE_SIZE_DERIV+4];
         xdot[i*STATE_SIZE_DERIV+2] = x[i*STATE_SIZE_DERIV+5];
 
-        double x_sim= d/c * sim_data->x[i];
-        double y_sim = d/c * sim_data->y[i];
-        double z_sim = d/c * sim_data->z[i];
+        double x_sim= (d/c) *sim_data->x[i];
+        double y_sim = (d/c) *sim_data->y[i];
+        double z_sim = sim_data->z[i];
 
         double dxdm = x[i*STATE_SIZE_DERIV];
         double dydm = x[i*STATE_SIZE_DERIV+1];
@@ -158,13 +159,13 @@ void dxdmdt(double t, double* x, double* xdot, void* data)
         
         // Уравнения для производных скоростей по массе
         // d(dvx/dM)/dt = Axx*dxdm + Axy*dydm + Axz*dzdm + dFxdM
-        xdot[i*STATE_SIZE_DERIV+3] = Axx * dxdm + Axy * dydm + Axz * dzdm + dFxdM;
+        xdot[i*STATE_SIZE_DERIV+3] =  (d/c) * Axx * dxdm + (d/c) * Axy * dydm + Axz * dzdm + dFxdM;
         
         // d(dvy/dM)/dt = Ayx*dxdm + Ayy*dydm + Ayz*dzdm + dFydM  
-        xdot[i*STATE_SIZE_DERIV+4] = Ayx * dxdm + Ayy * dydm + Ayz * dzdm + dFydM;
+        xdot[i*STATE_SIZE_DERIV+4] = (d/c) * Ayx * dxdm + (d/c) * Ayy * dydm + Ayz * dzdm + dFydM;
         
         // d(dvz/dM)/dt = Azx*dxdm + Azy*dydm + Azz*dzdm + dFzdM
-        xdot[i*STATE_SIZE_DERIV+5] = Azx * dxdm + Azy * dydm + Azz * dzdm + dFzdM;
+        xdot[i*STATE_SIZE_DERIV+5] = (d/c) * Azx * dxdm + (d/c) * Azy * dydm + Azz * dzdm + dFzdM;
     }
 }
 
@@ -250,7 +251,12 @@ void rk4Free(rk4* rk)
 
 void wrap_integration(double* x, double* deriv, double t, double M_bh, rk4 rk_4, double** arrays_for_deriv)
 {
+
     double dt = 86400;   // Шаг - день
+
+    if (t<0){
+        dt *= -1;
+    } 
 
     struct simulation_data_star data = {G, M_bh, 1};  // Дополнительные данные для ode
 
@@ -262,15 +268,12 @@ void wrap_integration(double* x, double* deriv, double t, double M_bh, rk4 rk_4,
 
     double local_time = 0;
 
-    while (local_time < t) // изменить
+    while (abs(local_time) <= abs(t))
     {
         ode(&rk_4, x, 1*STATE_SIZE_STAR, local_time, local_time+dt, dxdt, &data);
-        for (int i=0; i < 1; i++)
-        {
-            data_deriv.x[i] = x[i*STATE_SIZE_STAR];
-            data_deriv.y[i] = x[i*STATE_SIZE_STAR+1];
-            data_deriv.z[i] = x[i*STATE_SIZE_STAR+2];
-        }
+        data_deriv.x[0] = x[0];
+        data_deriv.y[0] = x[1];
+        data_deriv.z[0] = x[2];
         ode(&rk_4, deriv, 1*STATE_SIZE_DERIV, local_time, local_time+dt, dxdmdt, &data_deriv);
         local_time += dt;  // Увеличиваем время симуляции
     }
