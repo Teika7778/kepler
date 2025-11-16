@@ -45,10 +45,10 @@ double gauss_newton(kepler_orbit_denorm* stars, double M_bh)
         {
             rewind(files[file_number]);
 
-            while (fgets(buffer, sizeof(buffer), files[file_number]) != NULL) 
+            while (fgets(buffer, sizeof(buffer), files[file_number]) != NULL)
             {
 
-            sscanf(buffer, "%lf %lf %lf %lf %lf", 
+            sscanf(buffer, "%lf %lf %lf %lf %lf",
                    &t, &ra, &dec, &ra_err, &dec_err);
 
             // count g_i (ra and dec from model)
@@ -118,13 +118,10 @@ double gauss_newton_2(kepler_orbit_denorm* stars, double M_bh)
     double r_i[2];
     // Рассчитанная производная
     double dr_i[2];
-    // Расстояние до черной дыры
-    double d = R_BH_LY;
-    double c = 180. / M_PI * 3600.;
 
     // Переменные для численного интегрирования
-    
-    // Вектор состояния 
+
+    // Вектор состояния
     double x[STATE_SIZE_STAR];
     // Вектор состояния производных
     double deriv[STATE_SIZE_DERIV];
@@ -136,8 +133,6 @@ double gauss_newton_2(kepler_orbit_denorm* stars, double M_bh)
 
     // Переменные для метода центральных разностей
 
-    double delta = 1e24;
-    double x_r[STATE_SIZE_STAR], x_l[STATE_SIZE_STAR];
 
     while(++i != MAX_ITER_GAUSS_NEWTON)
     {
@@ -148,21 +143,23 @@ double gauss_newton_2(kepler_orbit_denorm* stars, double M_bh)
 
         char buffer[256]; // Буфер для хранения строки
 
-        for (size_t file_number=0; file_number<3; file_number++)
+        for (size_t file_number=0; file_number<2; file_number++)
         {
             rewind(files[file_number]);
 
             previous_t = stars[file_number].t0;
 
             init_star_state(x, stars[file_number], arr[i-1]); // init
-            init_star_state(x_r, stars[file_number], arr[i-1]+delta); // init
-            init_star_state(x_l, stars[file_number], arr[i-1]-delta); // init
 
-            while (fgets(buffer, sizeof(buffer), files[file_number]) != NULL) 
+            for (int j = 0; j < STATE_SIZE_DERIV; j++){
+                deriv[j] = 0;
+            }
+
+            while (fgets(buffer, sizeof(buffer), files[file_number]) != NULL)
             {
 
             // Чтение данных из файла
-            sscanf(buffer, "%lf %lf %lf %lf %lf", 
+            sscanf(buffer, "%lf %lf %lf %lf %lf",
                    &t, &ra, &dec, &ra_err, &dec_err);
 
             // Численное интегирование
@@ -170,36 +167,23 @@ double gauss_newton_2(kepler_orbit_denorm* stars, double M_bh)
             if (t < previous_t)
             {
                 wrap_integration(x, deriv, (t-previous_t)*365.*86400., arr[i-1], rk_4, array_for_deriv);
-                wrap_integration(x_r, deriv, (t-previous_t)*365.*86400., arr[i-1]+delta, rk_4, array_for_deriv);
-                wrap_integration(x_l, deriv, (t-previous_t)*365.*86400., arr[i-1]-delta, rk_4, array_for_deriv);
             } else
             {
                 wrap_integration(x, deriv, (t-previous_t)*365.*86400., arr[i-1], rk_4, array_for_deriv);
-                wrap_integration(x_r, deriv, (t-previous_t)*365.*86400., arr[i-1]+delta, rk_4, array_for_deriv);
-                wrap_integration(x_l, deriv, (t-previous_t)*365.*86400., arr[i-1]-delta, rk_4, array_for_deriv);
             }
-            
+
 
             g_i[0] = x[1]; //ra под 1
             g_i[1] = x[0];
 
 
-            // Метод центральных разностей 
-            
-            //memcpy(x_r, x, sizeof(double)*STATE_SIZE_STAR);
-            //memcpy(x_l, x, sizeof(double)*STATE_SIZE_STAR);
-            //init_star_state(x_r, stars[file_number], arr[i-1]+delta); // init
-            //init_star_state(x_l, stars[file_number], arr[i-1]-delta); // init
-            //wrap_integration(x_r, deriv, 200*86400, arr[i-1]+delta, rk_4, array_for_deriv);
-            //wrap_integration(x_l, deriv, 200*86400, arr[i-1]-delta, rk_4, array_for_deriv);
-            deriv[0] = (x_r[0] - x_l[0]) / (2*delta);
-            deriv[1] = (x_r[1] - x_l[1]) / (2*delta);
+            double d = (double) R_BH_LY * (double) LIGHT_YEAR;
+            double c = 180 / M_PI * 3600;
 
-
-            dr_i[0] = deriv[1];
-            dr_i[1] = deriv[0];
-
+            dr_i[0] = deriv[1] * d / c;
+            dr_i[1] = deriv[0] * d / c;
             // count r_i
+
 
             r_i[0] = g_i[0] - ra;
             r_i[1] = g_i[1] - dec;
@@ -222,7 +206,7 @@ double gauss_newton_2(kepler_orbit_denorm* stars, double M_bh)
 
         arr[i] = arr[i-1] - numerator / denominator;
 
-        if (std::isnan(arr[i]) || std::isinf(arr[i])) 
+        if (std::isnan(arr[i]) || std::isinf(arr[i]))
         {
             fclose(files[0]);
             fclose(files[1]);
