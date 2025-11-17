@@ -126,5 +126,5 @@ int main()
         denorm_orbit_s55
     };
 
-    gauss_newton_2(stars_denorm, 1e32);
+    gauss_newton(stars_denorm, 1e32);
 }
