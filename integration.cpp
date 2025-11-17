@@ -21,12 +21,6 @@ void init_star_state(double* x, kepler_orbit_denorm orbit_denorm, double M_bh)
         x[j] = pos[j];
         x[j + 3] = velo[j];
     }
-
-    double d = (double) R_BH_LY * (double) LIGHT_YEAR;
-    double c = 180. / M_PI * 3600.;
-
-    x[0] *= c/d;
-    x[1] *= c/d;
 }
 
 
@@ -90,24 +84,11 @@ void init_states(double* x)
             x[i * STATE_SIZE_STAR + j + 3] = velo[j];
         }
     }
-
-    double d = (double) R_BH_LY * (double) LIGHT_YEAR;
-    double c = 180. / M_PI * 3600.;
-
-    x[0] *= c/d;
-    x[1] *= c/d;
-    x[6] *= c/d;
-    x[7] *= c/d;
-    x[12] *= c/d;
-    x[13] *= c/d;
 }
 
 void dxdmdt(double t, double* x, double* xdot, void* data)
 {
     struct simulation_data_deriv* sim_data = (struct simulation_data_deriv*)(data);
-
-    double d = (double) R_BH_LY * (double) LIGHT_YEAR;
-    double c = 180. / M_PI * 3600.;
 
     for (int i=0; i<sim_data->NBODIES; i++)
     {
@@ -115,8 +96,8 @@ void dxdmdt(double t, double* x, double* xdot, void* data)
         xdot[i*STATE_SIZE_DERIV+1] = x[i*STATE_SIZE_DERIV+4];
         xdot[i*STATE_SIZE_DERIV+2] = x[i*STATE_SIZE_DERIV+5];
 
-        double x_sim = d/c * sim_data->x[i];
-        double y_sim = d/c * sim_data->y[i];
+        double x_sim = sim_data->x[i];
+        double y_sim = sim_data->y[i];
         double z_sim = sim_data->z[i];
 
         double dxdm = x[i*STATE_SIZE_DERIV];
@@ -163,18 +144,15 @@ void dxdt(double t, double* x, double* xdot, void* data)
 {
     struct simulation_data_star* sim_data = (struct simulation_data_star*)(data);
 
-    double d = (double) R_BH_LY * (double) LIGHT_YEAR;
-    double c = 180 / M_PI * 3600;
-
     for (int i=0; i<sim_data->NBODIES; i++)
     {
-        xdot[i*STATE_SIZE_STAR] = c/d * x[i*STATE_SIZE_STAR+3];
-        xdot[i*STATE_SIZE_STAR+1] = c/d * x[i*STATE_SIZE_STAR+4];
+        xdot[i*STATE_SIZE_STAR]   = x[i*STATE_SIZE_STAR+3];
+        xdot[i*STATE_SIZE_STAR+1] = x[i*STATE_SIZE_STAR+4];
         xdot[i*STATE_SIZE_STAR+2] = x[i*STATE_SIZE_STAR+5];
 
 
-        double rx = x[i*STATE_SIZE_STAR] * d /c;  // относительно центра (черной дыры)
-        double ry = x[i*STATE_SIZE_STAR+1] * d/ c;
+        double rx = x[i*STATE_SIZE_STAR];  // относительно центра (черной дыры)
+        double ry = x[i*STATE_SIZE_STAR+1];
         double rz = x[i*STATE_SIZE_STAR+2];
 
         double r3 = pow(sqrt(rx*rx + ry*ry + rz*rz), 3);

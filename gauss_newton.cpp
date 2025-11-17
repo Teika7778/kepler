@@ -90,8 +90,8 @@ double gauss_newton(kepler_orbit_denorm* stars, double M_bh)
             // Численное интегирование
             wrap_integration(x, deriv, (t-previous_t)*365.*86400., arr[i-1], rk_4, array_for_deriv);
 
-            g_i[0] = x[1]; //ra под 1
-            g_i[1] = x[0];
+            g_i[0] = x[1] * c / d; //ra под 1
+            g_i[1] = x[0] * c / d;
 
             dr_i[0] = deriv[1] * c / d;
             dr_i[1] = deriv[0] * c / d;
