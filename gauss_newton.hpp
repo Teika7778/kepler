@@ -5,3 +5,5 @@
 double gauss_newton(kepler_orbit_denorm* stars, double M_bh);
 
 double gauss_newton_2(kepler_orbit_denorm* stars, double M_bh);
+
+double gauss_newton_3(double* parameters);
