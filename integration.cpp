@@ -102,17 +102,6 @@ void init_states(double* x)
     x[13] *= c/d;
 }
 
-void init_deriv(double* x)
-{
-    for (int i=0; i<3; i++)
-    {
-        x[i] = 0;
-        x[i+1] = 0;
-        x[i+2] = 0;
-        x[i+3] = 0;
-    }
-}
-
 void dxdmdt(double t, double* x, double* xdot, void* data)
 {
     struct simulation_data_deriv* sim_data = (struct simulation_data_deriv*)(data);
@@ -126,8 +115,8 @@ void dxdmdt(double t, double* x, double* xdot, void* data)
         xdot[i*STATE_SIZE_DERIV+1] = x[i*STATE_SIZE_DERIV+4];
         xdot[i*STATE_SIZE_DERIV+2] = x[i*STATE_SIZE_DERIV+5];
 
-        double x_sim = sim_data->x[i]; // передаем не масштабированные координаты
-        double y_sim = sim_data->y[i];
+        double x_sim = d/c * sim_data->x[i];
+        double y_sim = d/c * sim_data->y[i];
         double z_sim = sim_data->z[i];
 
         double dxdm = x[i*STATE_SIZE_DERIV];
