@@ -353,8 +353,8 @@ void gauss_newton_3(double* parameters)
             dx_dy0[0] = c/d * (x_r_y0[1] - x_l_y0[1]) / (2*e_y0);
             dx_dy0[1] = c/d * (x_r_y0[0] - x_l_y0[0]) / (2*e_y0);
 
-            dx_dz0[0] = c/d * (x_r_z0[1] - x_l_z0[1]) / (2*e_z0);
-            dx_dz0[1] = c/d * (x_r_z0[0] - x_l_z0[0]) / (2*e_z0);
+            dx_dz0[0] = (x_r_z0[1] - x_l_z0[1]) / (2*e_z0);
+            dx_dz0[1] = (x_r_z0[0] - x_l_z0[0]) / (2*e_z0);
 
             dx_dv_x0[0] = c/d * (x_r_v_x0[1] - x_l_v_x0[1]) / (2*e_v_x0);
             dx_dv_x0[1] = c/d * (x_r_v_x0[0] - x_l_v_x0[0]) / (2*e_v_x0);
@@ -362,8 +362,8 @@ void gauss_newton_3(double* parameters)
             dx_dv_y0[0] = c/d * (x_r_v_y0[1] - x_l_v_y0[1]) / (2*e_v_y0);
             dx_dv_y0[1] = c/d * (x_r_v_y0[0] - x_l_v_y0[0]) / (2*e_v_y0);
 
-            dx_dv_z0[0] = c/d * (x_r_v_z0[1] - x_l_v_z0[1]) / (2*e_v_z0);
-            dx_dv_z0[1] = c/d * (x_r_v_z0[0] - x_l_v_z0[0]) / (2*e_v_z0);
+            dx_dv_z0[0] =  (x_r_v_z0[1] - x_l_v_z0[1]) / (2*e_v_z0);
+            dx_dv_z0[1] =  (x_r_v_z0[0] - x_l_v_z0[0]) / (2*e_v_z0);
 
             // Заполнение AtWA и AtWr
 
@@ -420,14 +420,14 @@ void gauss_newton_3(double* parameters)
         std::cout << std::endl;
 
         for(int j=0; j<size; j++)
-           std::cout << arr[i-1][j] << " ";
+            printf("%.2e ", arr[i-1][j]);
         std::cout << std::endl;
 
         std::cout << std::endl;
         std::cout << std::endl;
 
         for(int j=0; j<size; j++)
-            std::cout << AtWr[j] << " ";
+            printf("%.2e ", AtWr[j]);
         std::cout << std::endl;
 
         std::cout << std::endl;
@@ -436,7 +436,7 @@ void gauss_newton_3(double* parameters)
         for(int j=0; j<size; j++)
         {
             for(int k=0; k< size; k++)
-                std::cout << AtWA[j][k] << " ";
+                printf("%.2e ", AtWA[j][k]);
             std::cout << std::endl;
         }
 
@@ -457,6 +457,5 @@ void gauss_newton_3(double* parameters)
     fclose(files[0]);
     fclose(files[1]);
     fclose(files[2]);
-
 
 }
