@@ -1,5 +1,5 @@
 #include <cmath>
-#include "chol.h"
+#include "chol.hpp"
 
 void decompose(double** A, double** L, int n) {
     for (int i = 0; i < n; i++) {
@@ -23,8 +23,8 @@ void solve_eq(double** A, double* b, int n, double* x) {
         L[i] = new double[n]();
     }
     decompose(A, (double**) L, n);
-    // Имеем уравнение L LT x = b
-    // Рассмотрим его как L y = b, где y = LT x
+    // пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ L LT x = b
+    // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅ L y = b, пїЅпїЅпїЅ y = LT x
     double* y = new double[n];
     for (int i = 0; i < n; i++) {
         double s = 0;
@@ -33,7 +33,7 @@ void solve_eq(double** A, double* b, int n, double* x) {
         }
         y[i] = (b[i] - s) / L[i][i];
     }
-    // Теперь решим уравнение LT x = y
+    // пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ LT x = y
     for (int i = n - 1; i >= 0; i--) {
         double s = 0.0;
         for (int j = i + 1; j < n; j++) {

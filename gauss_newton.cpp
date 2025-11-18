@@ -147,7 +147,7 @@ double gauss_newton(kepler_orbit_denorm* stars, double M_bh)
 }
 
 
-double gauss_newton_3(double* parameters)
+void gauss_newton_3(double* parameters)
 {
     // Счетчик цикла Ньютона
     int i = 0;
@@ -164,6 +164,10 @@ double gauss_newton_3(double* parameters)
 
     // Массив значений для метода Ньютона
     double* arr[MAX_ITER_GAUSS_NEWTON];
+
+    for (int j = 1; j < MAX_ITER_GAUSS_NEWTON; j++) {
+    arr[j] = (double*)malloc(sizeof(double) * 7);
+    }
 
     // Начальное значение
     arr[0] = parameters;
@@ -190,7 +194,7 @@ double gauss_newton_3(double* parameters)
     double* array_for_deriv[] = {x_for_deriv, y_for_deriv, z_for_deriv};
 
     // Количество параметров
-    int size = sizeof(parameters) / sizeof(double);
+    int size = 7;
 
     // Матрица AtWA
     double** AtWA = (double**)malloc(sizeof(double*)*size);
@@ -208,11 +212,6 @@ double gauss_newton_3(double* parameters)
     double x_r_v_y0[STATE_SIZE_STAR], x_l_v_y0[STATE_SIZE_STAR]; // По v_y0
     double x_r_v_z0[STATE_SIZE_STAR], x_l_v_z0[STATE_SIZE_STAR]; // По v_z0
 
-    // Подходящие epsilon
-    double e_m = 1e30;
-    double e_x0 = 1e10, e_y0 = 1e10, e_z0 = 1e10;
-    double e_v_x0 = 1e10, e_v_y0 = 1e10, e_v_z0 = 1e10;
-
     // Массивы для производных
 
     double dx_dm[2], dx_dx0[2], dx_dy0[2], dx_dz0[2], dx_dv_x0[2], dx_dv_y0[2], dx_dv_z0[2]; 
@@ -220,7 +219,18 @@ double gauss_newton_3(double* parameters)
     while(++i != MAX_ITER_GAUSS_NEWTON)
     {
 
+        double sum = 0;
+
         char buffer[256]; // Буфер для хранения строки
+
+        // Подходящие epsilon
+        double e_m = arr[i-1][size-1] / 1e6;
+        double e_x0 = arr[i-1][0] / 1e6;
+        double e_y0 = arr[i-1][1] / 1e6;
+        double e_z0 = arr[i-1][2] / 1e6;
+        double e_v_x0 = arr[i-1][3] / 1e6;
+        double e_v_y0 = arr[i-1][4] / 1e6;
+        double e_v_z0 = arr[i-1][5] / 1e6;
 
         // Заполнение нулями
         for (int m=0; m<size; m++)
@@ -229,7 +239,7 @@ double gauss_newton_3(double* parameters)
             for (int k=0; k<size; k++) AtWA[m][k] = 0;
         }
 
-        for (size_t file_number=0; file_number<3; file_number++)
+        for (size_t file_number=0; file_number<1; file_number++)
         {
             rewind(files[file_number]);
 
@@ -271,20 +281,20 @@ double gauss_newton_3(double* parameters)
             x_r_x0[0] += e_x0;
             x_l_x0[0] -= e_x0;
 
-            x_r_y0[0] += e_y0;
-            x_l_y0[0] -= e_y0;
+            x_r_y0[1] += e_y0;
+            x_l_y0[1] -= e_y0;
 
-            x_r_z0[0] += e_z0;
-            x_l_z0[0] -= e_z0;
+            x_r_z0[2] += e_z0;
+            x_l_z0[2] -= e_z0;
 
-            x_r_v_x0[0] += e_v_x0;
-            x_l_v_x0[0] -= e_v_x0;
+            x_r_v_x0[3] += e_v_x0;
+            x_l_v_x0[3] -= e_v_x0;
 
-            x_r_v_y0[0] += e_v_y0;
-            x_l_v_y0[0] -= e_v_y0;
+            x_r_v_y0[4] += e_v_y0;
+            x_l_v_y0[4] -= e_v_y0;
 
-            x_r_v_z0[0] += e_v_z0;
-            x_l_v_z0[0] -= e_v_z0;
+            x_r_v_z0[5] += e_v_z0;
+            x_l_v_z0[5] -= e_v_z0;
                      
 
             while (fgets(buffer, sizeof(buffer), files[file_number]) != NULL)
@@ -314,53 +324,139 @@ double gauss_newton_3(double* parameters)
             wrap_integration(x_r_v_x0, deriv, (t-previous_t)*365.*86400., arr[i-1][size-1], rk_4, array_for_deriv);
             wrap_integration(x_l_v_x0, deriv, (t-previous_t)*365.*86400., arr[i-1][size-1], rk_4, array_for_deriv);
 
+            wrap_integration(x_r_v_y0, deriv, (t-previous_t)*365.*86400., arr[i-1][size-1], rk_4, array_for_deriv);
+            wrap_integration(x_l_v_y0, deriv, (t-previous_t)*365.*86400., arr[i-1][size-1], rk_4, array_for_deriv);
+
             wrap_integration(x_r_v_z0, deriv, (t-previous_t)*365.*86400., arr[i-1][size-1], rk_4, array_for_deriv);
             wrap_integration(x_l_v_z0, deriv, (t-previous_t)*365.*86400., arr[i-1][size-1], rk_4, array_for_deriv);
 
             // Вычисление невязки и проивзодных
 
             // Невязка
-            g_i[0] = x[1] * d/c; //ra под 1
-            g_i[1] = x[0] * d/c;
+            g_i[0] = c/d* x[1]; //ra под 1
+            g_i[1] = c/d* x[0];
 
             r_i[0] = g_i[0] - ra;
             r_i[1] = g_i[1] - dec;
 
+            sum += pow(r_i[0], 2) / pow(ra_err, 2);
+            sum += pow(r_i[1], 2) / pow(dec_err, 2);
+
             // Производные
 
-            dx_dm[0] = (x_r_m[1] - x_l_m[1]) / 2*e_m;
+            dx_dm[0] = c/d * (x_r_m[1] - x_l_m[1]) / (2*e_m);
+            dx_dm[1] = c/d * (x_r_m[0] - x_l_m[0]) / (2*e_m);
 
-            dr_i[0] = deriv[1] * d / c;
-            dr_i[1] = deriv[0] * d / c;
+            dx_dx0[0] = c/d * (x_r_x0[1] - x_l_x0[1]) / (2*e_x0);
+            dx_dx0[1] = c/d * (x_r_x0[0] - x_l_x0[0]) / (2*e_x0);
+
+            dx_dy0[0] = c/d * (x_r_y0[1] - x_l_y0[1]) / (2*e_y0);
+            dx_dy0[1] = c/d * (x_r_y0[0] - x_l_y0[0]) / (2*e_y0);
+
+            dx_dz0[0] = c/d * (x_r_z0[1] - x_l_z0[1]) / (2*e_z0);
+            dx_dz0[1] = c/d * (x_r_z0[0] - x_l_z0[0]) / (2*e_z0);
+
+            dx_dv_x0[0] = c/d * (x_r_v_x0[1] - x_l_v_x0[1]) / (2*e_v_x0);
+            dx_dv_x0[1] = c/d * (x_r_v_x0[0] - x_l_v_x0[0]) / (2*e_v_x0);
+
+            dx_dv_y0[0] = c/d * (x_r_v_y0[1] - x_l_v_y0[1]) / (2*e_v_y0);
+            dx_dv_y0[1] = c/d * (x_r_v_y0[0] - x_l_v_y0[0]) / (2*e_v_y0);
+
+            dx_dv_z0[0] = c/d * (x_r_v_z0[1] - x_l_v_z0[1]) / (2*e_v_z0);
+            dx_dv_z0[1] = c/d * (x_r_v_z0[0] - x_l_v_z0[0]) / (2*e_v_z0);
+
+            // Заполнение AtWA и AtWr
+
+            AtWr[size-1] += (1.0/pow(ra_err, 2))*r_i[0]* dx_dm[0];
+            AtWr[size-1] += (1.0/pow(dec_err, 2))*r_i[1]* dx_dm[1];
+
+            AtWr[STATE_SIZE_STAR*file_number] += (1.0/pow(ra_err, 2)) * r_i[0] * dx_dx0[0];
+            AtWr[STATE_SIZE_STAR*file_number] += (1.0/pow(dec_err, 2)) * r_i[1] * dx_dx0[1];
+
+            AtWr[STATE_SIZE_STAR*file_number+1] += (1.0/pow(ra_err, 2)) * r_i[0] * dx_dy0[0];
+            AtWr[STATE_SIZE_STAR*file_number+1] += (1.0/pow(dec_err, 2)) * r_i[1] * dx_dy0[1];
+
+            AtWr[STATE_SIZE_STAR*file_number+2] += (1.0/pow(ra_err, 2)) * r_i[0] * dx_dz0[0];
+            AtWr[STATE_SIZE_STAR*file_number+2] += (1.0/pow(dec_err, 2)) * r_i[1] * dx_dz0[1];
+
+            AtWr[STATE_SIZE_STAR*file_number+3] += (1.0/pow(ra_err, 2)) * r_i[0] * dx_dv_x0[0];
+            AtWr[STATE_SIZE_STAR*file_number+3] += (1.0/pow(dec_err, 2)) * r_i[1] * dx_dv_x0[1];
+
+            AtWr[STATE_SIZE_STAR*file_number+4] += (1.0/pow(ra_err, 2)) * r_i[0] * dx_dv_y0[0];
+            AtWr[STATE_SIZE_STAR*file_number+4] += (1.0/pow(dec_err, 2)) * r_i[1] * dx_dv_y0[1];
+
+            AtWr[STATE_SIZE_STAR*file_number+5] += (1.0/pow(ra_err, 2)) * r_i[0] * dx_dv_z0[0];
+            AtWr[STATE_SIZE_STAR*file_number+5] += (1.0/pow(dec_err, 2)) * r_i[1] * dx_dv_z0[1];
+
+            double* deriv_vector[6] = {dx_dx0, dx_dy0, dx_dz0, dx_dv_x0, dx_dv_y0, dx_dv_z0}; 
+
+            for (int j=0; j<STATE_SIZE_STAR; j++)
+            {
+                for (int k=0; k<6; k++)
+                {
+                    AtWA[j + STATE_SIZE_STAR*file_number][k + STATE_SIZE_STAR*file_number] += (1.0/pow(ra_err, 2)) * deriv_vector[j][0] * deriv_vector[k][0];
+                    AtWA[j + STATE_SIZE_STAR*file_number][k + STATE_SIZE_STAR*file_number] += (1.0/pow(dec_err, 2)) * deriv_vector[j][1] * deriv_vector[k][1];
+                }
+
+                AtWA[j + STATE_SIZE_STAR*file_number][size-1] += (1.0/pow(ra_err, 2)) * dx_dm[0] * deriv_vector[j][0];
+                AtWA[j + STATE_SIZE_STAR*file_number][size-1] += (1.0/pow(dec_err, 2)) * dx_dm[1] * deriv_vector[j][1];
+                
+                AtWA[size-1][j + STATE_SIZE_STAR*file_number] += (1.0/pow(ra_err, 2)) * dx_dm[0] * deriv_vector[j][0];
+                AtWA[size-1][j + STATE_SIZE_STAR*file_number] += (1.0/pow(dec_err, 2)) * dx_dm[1] * deriv_vector[j][1];
+                
+                AtWA[size-1][size-1] += (1.0/pow(ra_err, 2)) * dx_dm[0] * dx_dm[0];
+                AtWA[size-1][size-1] += (1.0/pow(ra_err, 2)) * dx_dm[1] * dx_dm[1];
+            }
 
             previous_t = t;
 
             }
         }
 
-        printf("MASS: %.20e, SS: %.20e\n", arr[i-1], sum);
+        std::cout << "------------ITERATION " << i << " -----------------" << std::endl;
+        std::cout << std::endl;
 
-        arr[i] = arr[i-1] - numerator / denominator;
+        std::cout << "ERROR SUM: " << sum << std::endl;
+        std::cout << std::endl;
 
-        if (std::isnan(arr[i]) || std::isinf(arr[i]))
+        for(int j=0; j<size; j++)
+           std::cout << arr[i-1][j] << " ";
+        std::cout << std::endl;
+
+        std::cout << std::endl;
+        std::cout << std::endl;
+
+        for(int j=0; j<size; j++)
+            std::cout << AtWr[j] << " ";
+        std::cout << std::endl;
+
+        std::cout << std::endl;
+        std::cout << std::endl;
+
+        for(int j=0; j<size; j++)
         {
-            fclose(files[0]);
-            fclose(files[1]);
-            fclose(files[2]);
-            rk4Free(&rk_4);
-            printf("MASS: %.20e, SS: %.20e\n", arr[i], sum);
-            return arr[i];
+            for(int k=0; k< size; k++)
+                std::cout << AtWA[j][k] << " ";
+            std::cout << std::endl;
         }
+
+        std::cout << std::endl;
+        std::cout << std::endl;
+
+        double w[size];
+
+        solve_eq(AtWA, AtWr, size, w);
+
+        for(int j=0; j<size; j++) arr[i][j] = arr[i-1][j] - w[j];
 
     }
 
     rk4Free(&rk_4);
+    // Тут куча освобождений памяти
 
     fclose(files[0]);
     fclose(files[1]);
     fclose(files[2]);
-
-    return arr[MAX_ITER_GAUSS_NEWTON-1];
 
 
 }

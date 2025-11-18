@@ -48,5 +48,13 @@ int main()
         denorm_orbit_s55
     };
 
-    gauss_newton(stars_denorm, 1e32);
+    double parameters[7];
+
+    double x[6];
+    init_star_state(x, denorm_orbit_s2, 1e32);
+
+    for (int i=0; i<6; i++) parameters[i] = x[i];
+    parameters[6] = 1e32;
+
+    gauss_newton_3(parameters);
 }
