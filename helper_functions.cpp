@@ -8,8 +8,13 @@ int sym_matrix_index(int i, int j, int size) {
         i = j;
         j = t;
     }
-    // Формула для индекса в нижнем треугольнике (включая диагональ)
-    return i * (i + 1) / 2 + j;
+    int sum = 0, k=0;
+    while(k != i)
+    {
+        sum += (size-k);
+        k += 1;
+    }
+    return sum + (j-i);
 }
 
 // Получить значение элемента матрицы
@@ -20,14 +25,4 @@ double sym_matrix_at(double* matrix, int i, int j, int size) {
 // Изменить значение элемента матрицы
 void sym_matrix_change(double* matrix, int i, int j, int size, double value) {
     matrix[sym_matrix_index(i, j, size)] = value;
-}
-
-
-int main()
-{
-    double matrix[9];
-
-    for (int i=0; i<9; i++) matrix[i] = i;
-
-    std::cout << matrix[2*3 +1] << std::endl;
 }

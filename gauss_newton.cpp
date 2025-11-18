@@ -7,6 +7,8 @@
 #include "diff.hpp"
 #include "transform.hpp"
 #include "integration.hpp"
+#include "chol.hpp"
+#include "helper_functions.hpp"
 
 #include "gauss_newton.hpp"
 
@@ -39,7 +41,7 @@ double gauss_newton(kepler_orbit_denorm* stars, double M_bh)
     double previous_t;
     // Рассчитанные значения на i-ом измерении
     double g_i[2];
-    // Неувязка
+    // Невязка
     double r_i[2];
     // Рассчитанная производная
     double dr_i[2];
@@ -156,6 +158,10 @@ double gauss_newton_3(double* parameters)
     files[1] = fopen("data/s38.txt", "r");
     files[2] = fopen("data/s55.txt", "r");
 
+    // Переменные для перевода метров в ra. и dec.
+    double d = (double) R_BH_LY * (double) LIGHT_YEAR;
+    double c = 180 / M_PI * 3600;
+
     // Массив значений для метода Ньютона
     double* arr[MAX_ITER_GAUSS_NEWTON];
 
@@ -166,10 +172,15 @@ double gauss_newton_3(double* parameters)
     double t, ra, dec, ra_err, dec_err;
     double previous_t;
 
+    // Рассчитанные значения на i-ом измерении
+    double g_i[2];
+    // Невязка
+    double r_i[2];
+
     // Переменные для численного интегрирования
 
     // Вектор состояния
-    double x[STATE_SIZE_STAR*3];
+    double x[STATE_SIZE_STAR];
     // Вектор состояния производных
     double deriv[STATE_SIZE_DERIV];
     // Стуктура для метода Рунге-Кутты 4
@@ -178,22 +189,103 @@ double gauss_newton_3(double* parameters)
     double x_for_deriv[1], y_for_deriv[1], z_for_deriv[1];
     double* array_for_deriv[] = {x_for_deriv, y_for_deriv, z_for_deriv};
 
+    // Количество параметров
+    int size = sizeof(parameters) / sizeof(double);
+
+    // Матрица AtWA
+    double** AtWA = (double**)malloc(sizeof(double*)*size);
+    for (int j=0; j<size; j++) AtWA[j] = (double*)malloc(sizeof(double)*size);
+
+    // Вектор AtWr(betha)
+    double* AtWr = (double*)malloc(sizeof(double)*size);
+
+    // Численные производные
+    double x_r_m[STATE_SIZE_STAR], x_l_m[STATE_SIZE_STAR]; // По массе
+    double x_r_x0[STATE_SIZE_STAR], x_l_x0[STATE_SIZE_STAR]; // По x_0
+    double x_r_y0[STATE_SIZE_STAR], x_l_y0[STATE_SIZE_STAR]; // По y_0
+    double x_r_z0[STATE_SIZE_STAR], x_l_z0[STATE_SIZE_STAR]; // По z_0
+    double x_r_v_x0[STATE_SIZE_STAR], x_l_v_x0[STATE_SIZE_STAR]; // По v_x0
+    double x_r_v_y0[STATE_SIZE_STAR], x_l_v_y0[STATE_SIZE_STAR]; // По v_y0
+    double x_r_v_z0[STATE_SIZE_STAR], x_l_v_z0[STATE_SIZE_STAR]; // По v_z0
+
+    // Подходящие epsilon
+    double e_m = 1e30;
+    double e_x0 = 1e10, e_y0 = 1e10, e_z0 = 1e10;
+    double e_v_x0 = 1e10, e_v_y0 = 1e10, e_v_z0 = 1e10;
+
+    // Массивы для производных
+
+    double dx_dm[2], dx_dx0[2], dx_dy0[2], dx_dz0[2], dx_dv_x0[2], dx_dv_y0[2], dx_dv_z0[2]; 
+
     while(++i != MAX_ITER_GAUSS_NEWTON)
     {
 
         char buffer[256]; // Буфер для хранения строки
 
+        // Заполнение нулями
+        for (int m=0; m<size; m++)
+        {
+            AtWr[m] = 0;
+            for (int k=0; k<size; k++) AtWA[m][k] = 0;
+        }
+
         for (size_t file_number=0; file_number<3; file_number++)
         {
             rewind(files[file_number]);
 
-            previous_t = stars[file_number].t0;
+            // Начало интегрирования в первом наблюдении (ХАРДКОД)
+            if (file_number == 0) previous_t = 2002.578;
+            if (file_number == 1) previous_t = 2004.511;
+            if (file_number == 2) previous_t = 2004.511;
 
-            init_star_state(x, stars[file_number], arr[i-1]); // init
-
-            for (int j = 0; j < STATE_SIZE_DERIV; j++){
-                deriv[j] = 0;
+            // Инициализация текущими значениями параметров
+            for(int j=0; j<STATE_SIZE_STAR; j++)
+            {
+                // вектор системы
+                x[j] = arr[i-1][j + STATE_SIZE_STAR*file_number];
+                // векотры производных
+                // масса 
+                x_r_m[j] = arr[i-1][j + STATE_SIZE_STAR*file_number];
+                x_l_m[j] = arr[i-1][j + STATE_SIZE_STAR*file_number];
+                // x_0
+                x_r_x0[j] = arr[i-1][j + STATE_SIZE_STAR*file_number];
+                x_l_x0[j] = arr[i-1][j + STATE_SIZE_STAR*file_number];
+                // y_0
+                x_r_y0[j] = arr[i-1][j + STATE_SIZE_STAR*file_number];
+                x_l_y0[j] = arr[i-1][j + STATE_SIZE_STAR*file_number];
+                // z_0
+                x_r_z0[j] = arr[i-1][j + STATE_SIZE_STAR*file_number];
+                x_l_z0[j] = arr[i-1][j + STATE_SIZE_STAR*file_number];
+                // v_x0
+                x_r_v_x0[j] = arr[i-1][j + STATE_SIZE_STAR*file_number];
+                x_l_v_x0[j] = arr[i-1][j + STATE_SIZE_STAR*file_number];
+                // v_y0
+                x_r_v_y0[j] = arr[i-1][j + STATE_SIZE_STAR*file_number];
+                x_l_v_y0[j] = arr[i-1][j + STATE_SIZE_STAR*file_number];
+                // v_z0
+                x_r_v_z0[j] = arr[i-1][j + STATE_SIZE_STAR*file_number];
+                x_l_v_z0[j] = arr[i-1][j + STATE_SIZE_STAR*file_number];
             }
+
+            // Добавление eps
+            x_r_x0[0] += e_x0;
+            x_l_x0[0] -= e_x0;
+
+            x_r_y0[0] += e_y0;
+            x_l_y0[0] -= e_y0;
+
+            x_r_z0[0] += e_z0;
+            x_l_z0[0] -= e_z0;
+
+            x_r_v_x0[0] += e_v_x0;
+            x_l_v_x0[0] -= e_v_x0;
+
+            x_r_v_y0[0] += e_v_y0;
+            x_l_v_y0[0] -= e_v_y0;
+
+            x_r_v_z0[0] += e_v_z0;
+            x_l_v_z0[0] -= e_v_z0;
+                     
 
             while (fgets(buffer, sizeof(buffer), files[file_number]) != NULL)
             {
@@ -203,39 +295,43 @@ double gauss_newton_3(double* parameters)
                    &t, &ra, &dec, &ra_err, &dec_err);
 
             // Численное интегирование
+            // Вектор системы
+            wrap_integration(x, deriv, (t-previous_t)*365.*86400., arr[i-1][size-1], rk_4, array_for_deriv);
 
-            if (t < previous_t)
-            {
-                wrap_integration(x, deriv, (t-previous_t)*365.*86400., arr[i-1], rk_4, array_for_deriv);
-            } else
-            {
-                wrap_integration(x, deriv, (t-previous_t)*365.*86400., arr[i-1], rk_4, array_for_deriv);
-            }
+            // Численные производные
+            wrap_integration(x_r_m, deriv, (t-previous_t)*365.*86400., arr[i-1][size-1]+e_m, rk_4, array_for_deriv);
+            wrap_integration(x_l_m, deriv, (t-previous_t)*365.*86400., arr[i-1][size-1]-e_m, rk_4, array_for_deriv);
 
+            wrap_integration(x_r_x0, deriv, (t-previous_t)*365.*86400., arr[i-1][size-1], rk_4, array_for_deriv);
+            wrap_integration(x_l_x0, deriv, (t-previous_t)*365.*86400., arr[i-1][size-1], rk_4, array_for_deriv);
 
-            g_i[0] = x[1]; //ra под 1
-            g_i[1] = x[0];
+            wrap_integration(x_r_y0, deriv, (t-previous_t)*365.*86400., arr[i-1][size-1], rk_4, array_for_deriv);
+            wrap_integration(x_l_y0, deriv, (t-previous_t)*365.*86400., arr[i-1][size-1], rk_4, array_for_deriv);
 
+            wrap_integration(x_r_z0, deriv, (t-previous_t)*365.*86400., arr[i-1][size-1], rk_4, array_for_deriv);
+            wrap_integration(x_l_z0, deriv, (t-previous_t)*365.*86400., arr[i-1][size-1], rk_4, array_for_deriv);
 
-            double d = (double) R_BH_LY * (double) LIGHT_YEAR;
-            double c = 180 / M_PI * 3600;
+            wrap_integration(x_r_v_x0, deriv, (t-previous_t)*365.*86400., arr[i-1][size-1], rk_4, array_for_deriv);
+            wrap_integration(x_l_v_x0, deriv, (t-previous_t)*365.*86400., arr[i-1][size-1], rk_4, array_for_deriv);
 
-            dr_i[0] = deriv[1] * d / c;
-            dr_i[1] = deriv[0] * d / c;
-            // count r_i
+            wrap_integration(x_r_v_z0, deriv, (t-previous_t)*365.*86400., arr[i-1][size-1], rk_4, array_for_deriv);
+            wrap_integration(x_l_v_z0, deriv, (t-previous_t)*365.*86400., arr[i-1][size-1], rk_4, array_for_deriv);
 
+            // Вычисление невязки и проивзодных
+
+            // Невязка
+            g_i[0] = x[1] * d/c; //ra под 1
+            g_i[1] = x[0] * d/c;
 
             r_i[0] = g_i[0] - ra;
             r_i[1] = g_i[1] - dec;
 
-            sum += pow(r_i[0], 2) / pow(ra_err, 2);
-            sum += pow(r_i[1], 2) / pow(dec_err, 2);
+            // Производные
 
-            numerator += ( 1./pow(ra_err, 2) ) * r_i[0] * dr_i[0];
-            numerator += ( 1./pow(dec_err, 2) ) * r_i[1] * dr_i[1];
+            dx_dm[0] = (x_r_m[1] - x_l_m[1]) / 2*e_m;
 
-            denominator += ( 1./pow(ra_err, 2) ) * pow(dr_i[0], 2);
-            denominator += ( 1./pow(dec_err, 2) ) * pow(dr_i[1], 2);
+            dr_i[0] = deriv[1] * d / c;
+            dr_i[1] = deriv[0] * d / c;
 
             previous_t = t;
 
