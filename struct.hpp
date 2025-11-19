@@ -1,6 +1,6 @@
 #pragma once
 
-#define STATE_SIZE_STAR 6  // Размер вектора состояния системы
+#define STATE_SIZE_STAR 12  // Размер вектора состояния системы
 
 #define STATE_SIZE_DERIV 6
 
@@ -38,16 +38,5 @@ struct rk4{
 struct simulation_data_star {
     double Grav;
     double M_bh;
-    int NBODIES;
 };
-
-struct simulation_data_deriv{
-    double Grav;
-    double M_bh;
-    int NBODIES;
-    double* x;
-    double* y;
-    double* z;
-};
-
 

@@ -10,9 +10,18 @@
 
 #include "gauss_newton.hpp"
 
+#define STEP_TO_PLOT_DIFF 10
+#define STAR_TO_PLOT_DIFF 1 // s_38
 
-double gauss_newton(kepler_orbit_denorm* stars, double M_bh)
+
+double gauss_newton(kepler_orbit_denorm* stars, double M_bh, int steps, bool numerical)
 {
+
+    if (STEP_TO_PLOT_DIFF >= steps)
+    {
+        std::cout << "Слишком мало шагов для указанного STEP_TO_PLOT_DIF\n" << std::endl;
+        return 0;
+    }
 
     double d = (double) R_BH_LY * (double) LIGHT_YEAR;
     double c = 180 / M_PI * 3600;
@@ -26,45 +35,55 @@ double gauss_newton(kepler_orbit_denorm* stars, double M_bh)
     files[1] = fopen("data/s38.txt", "r");
     files[2] = fopen("data/s55.txt", "r");
 
-    // Массив значений для метода Ньютона
-    double arr[MAX_ITER_GAUSS_NEWTON];
+    FILE* files_deriv[2];
+
+    // Файл для записи результата
+    if (numerical)
+    {
+        files_deriv[0] = fopen("plot_deriv/num_deriv_value.txt", "w+");
+        files_deriv[1] = fopen("plot_deriv/num_deriv_error_sum.txt", "w+");
+    }else{
+        files_deriv[0] = fopen("plot_deriv/analytic_deriv_value.txt", "w+");
+        files_deriv[1] = fopen("plot_deriv/analytic_deriv_error_sum.txt", "w+");
+    }
+
+    double current_value;
 
     // Начальное значение
-    arr[0] = M_bh;
+    current_value = M_bh;
 
-    // Числитель и знаменатель для вычисления нового шага
+    // Числитель и знаменатель для вычисления нового шага:
     double numerator, denominator;
-    // Переменные, считваемые из файла
+
+    // Переменные, считваемые из файла:
     double t, ra, dec, ra_err, dec_err;
     double previous_t;
-    // Рассчитанные значения на i-ом измерении
-    double g_i[2];
-    // Неувязка
+
+    // Невязка
     double r_i[2];
-    // Рассчитанная производная
+
+    // Взвешенная сумма невязок:
+    double sum;
+
+    // Производная
     double dr_i[2];
 
-    // Переменные для численного интегрирования
+    // Переменные для численного интегрирования:
 
     // Вектор состояния
     double x[STATE_SIZE_STAR];
-    // Вектор состояния производных
-    double deriv[STATE_SIZE_DERIV];
+    // Векторы состояния для орбит с инкрементом по массе
+    double x_r[STATE_SIZE_STAR], x_l[STATE_SIZE_STAR];
+    // Инкремент параметра (зависит от шага)
+    double eps;
     // Стуктура для метода Рунге-Кутты 4
     rk4 rk_4 = {NULL, NULL, NULL, NULL, NULL};
-    // Занчения координат (для передачи в производную)
-    double x_for_deriv[1], y_for_deriv[1], z_for_deriv[1];
-    double* array_for_deriv[] = {x_for_deriv, y_for_deriv, z_for_deriv};
 
-    // Переменные для метода центральных разностей
-
-
-    while(++i != MAX_ITER_GAUSS_NEWTON)
+    while(++i != steps)
     {
-        numerator = 0;
-        denominator = 0;
+        numerator = 0, denominator = 0, sum = 0;
 
-        double sum = 0;
+        eps = current_value / 1e8;
 
         char buffer[256]; // Буфер для хранения строки
 
@@ -74,11 +93,9 @@ double gauss_newton(kepler_orbit_denorm* stars, double M_bh)
 
             previous_t = stars[file_number].t0;
 
-            init_star_state(x, stars[file_number], arr[i-1]); // init
-
-            for (int j = 0; j < STATE_SIZE_DERIV; j++){
-                deriv[j] = 0;
-            }
+            init_star_state(x, stars[file_number], current_value); // init
+            init_star_state(x_r, stars[file_number], current_value+eps); // init
+            init_star_state(x_l, stars[file_number], current_value-eps); // init
 
             while (fgets(buffer, sizeof(buffer), files[file_number]) != NULL)
             {
@@ -88,52 +105,53 @@ double gauss_newton(kepler_orbit_denorm* stars, double M_bh)
                    &t, &ra, &dec, &ra_err, &dec_err);
 
             // Численное интегирование
-            wrap_integration(x, deriv, (t-previous_t)*365.*86400., arr[i-1], rk_4, array_for_deriv);
+            wrap_integration(x, (t-previous_t)*365.*86400., current_value, rk_4);
+            wrap_integration(x_r, (t-previous_t)*365.*86400., current_value+eps, rk_4);
+            wrap_integration(x_l, (t-previous_t)*365.*86400., current_value-eps, rk_4);
 
-            g_i[0] = x[1] * c / d; //ra под 1
-            g_i[1] = x[0] * c / d;
+            if (numerical)
+            {   // Численная
+                dr_i[0] = c/d * (x_r[1] - x_l[1]) / (2*eps);
+                dr_i[1] =  c/d * (x_r[0] - x_l[0]) / (2*eps);
+            } else
+            {   // Аналитическая
+                dr_i[0] = c/d * x[7];
+                dr_i[1] = c/d * x[6];
+            }
+            
 
-            dr_i[0] = deriv[1] * c / d;
-            dr_i[1] = deriv[0] * c / d;
-            // count r_i
+            if (i == STEP_TO_PLOT_DIFF and file_number == STAR_TO_PLOT_DIFF)
+                fprintf(files_deriv[0], "%.10e %.10e\n", dr_i[0], dr_i[1]);
+            
+            // Невязка
+            r_i[0] = c/d* x[1] - ra;
+            r_i[1] = c/d* x[0] - dec;
 
-
-            r_i[0] = g_i[0] - ra;
-            r_i[1] = g_i[1] - dec;
-
+            // Взвешенная сумма невязок
             sum += pow(r_i[0], 2) / pow(ra_err, 2);
             sum += pow(r_i[1], 2) / pow(dec_err, 2);
 
-            numerator += ( 1./pow(ra_err, 2) ) * r_i[0] * dr_i[0];
-            numerator += ( 1./pow(dec_err, 2) ) * r_i[1] * dr_i[1];
-
-            denominator += ( 1./pow(ra_err, 2) ) * pow(dr_i[0], 2);
-            denominator += ( 1./pow(dec_err, 2) ) * pow(dr_i[1], 2);
+            numerator += 1./pow(ra_err, 2)* r_i[0]*dr_i[0] +  1./pow(dec_err, 2)*r_i[1]*dr_i[1];
+            denominator += 1./pow(ra_err, 2) * pow(dr_i[0], 2) + 1./pow(dec_err, 2)*pow(dr_i[1], 2);
 
             previous_t = t;
 
             }
         }
 
-        printf("MASS: %.20e, SS: %.20e\n", arr[i-1], sum);
+        fprintf(files_deriv[1], "%d %.10e\n", i, sum);
 
-        arr[i] = arr[i-1] - numerator / denominator;
+        current_value -=  numerator / denominator;
 
-        if (std::isnan(arr[i]) || std::isinf(arr[i]))
+        if (std::isnan(current_value) || std::isinf(current_value))
         {
             fclose(files[0]);
             fclose(files[1]);
             fclose(files[2]);
             rk4Free(&rk_4);
-            printf("MASS: %.20e, SS: %.20e\n", arr[i], sum);
-            return arr[i];
+            return current_value;
         }
-
-        if (i == MAX_ITER_GAUSS_NEWTON-1)
-            printf("MASS: %.20e, SS: %.20e\n", arr[i], sum);
     }
-
-    
 
     rk4Free(&rk_4);
 
@@ -141,5 +159,8 @@ double gauss_newton(kepler_orbit_denorm* stars, double M_bh)
     fclose(files[1]);
     fclose(files[2]);
 
-    return arr[MAX_ITER_GAUSS_NEWTON-1];
+    fclose(files_deriv[0]);
+    fclose(files_deriv[1]);
+
+    return current_value;
 }
