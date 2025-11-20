@@ -97,12 +97,19 @@ double gauss_newton(kepler_orbit_denorm* stars, double M_bh, int steps, bool num
             init_star_state(x_r, stars[file_number], current_value+eps); // init
             init_star_state(x_l, stars[file_number], current_value-eps); // init
 
+            dr_i[0] = 0;
+            dr_i[1] = 0;
+
             while (fgets(buffer, sizeof(buffer), files[file_number]) != NULL)
             {
 
             // Чтение данных из файла
             sscanf(buffer, "%lf %lf %lf %lf %lf",
                    &t, &ra, &dec, &ra_err, &dec_err);
+
+            if (i == STEP_TO_PLOT_DIFF and file_number == STAR_TO_PLOT_DIFF)
+                fprintf(files_deriv[0], "%.10e %.10e\n", dr_i[0], dr_i[1]);
+            
 
             // Численное интегирование
             wrap_integration(x, (t-previous_t)*365.*86400., current_value, rk_4);
@@ -119,9 +126,6 @@ double gauss_newton(kepler_orbit_denorm* stars, double M_bh, int steps, bool num
                 dr_i[1] = c/d * x[6];
             }
             
-
-            if (i == STEP_TO_PLOT_DIFF and file_number == STAR_TO_PLOT_DIFF)
-                fprintf(files_deriv[0], "%.10e %.10e\n", dr_i[0], dr_i[1]);
             
             // Невязка
             r_i[0] = c/d* x[1] - ra;
