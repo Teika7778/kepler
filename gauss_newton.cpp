@@ -52,11 +52,11 @@ void gauss_newton(double* parameters)
     // Стуктура для метода Рунге-Кутты 4
     rk4 rk_4 = {NULL, NULL, NULL, NULL, NULL};
 
-    // Количество параметров
+    // Количество параметров сейчас ХАРДКОД для одной звезды
     int size = 7;
 
     // Массив векторов состояний численных производных
-    double** deriv_state = (double**)malloc(sizeof(double*)*14);
+    double* deriv_state[14];
     for (int j=0; j<14; j++)
         deriv_state[j] = (double*)malloc(sizeof(double)*STATE_SIZE_STAR);
 
@@ -247,8 +247,14 @@ void gauss_newton(double* parameters)
 
     }
 
+    // Освобождение памяти
     rk4Free(&rk_4);
-    // Тут куча освобождений памяти
+
+    for (int j=0; j<14; j++)
+        free(deriv_state[j]);
+    for (int j=0; j<size; j++)
+        free(AtWA[j]);
+    free(AtWA);
 
     fclose(files[0]);
     fclose(files[1]);
