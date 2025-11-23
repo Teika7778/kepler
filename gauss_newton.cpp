@@ -40,8 +40,6 @@ void gauss_newton(double* parameters)
     double t, ra, dec, ra_err, dec_err;
     double previous_t;
 
-    // Рассчитанные значения на i-ом измерении
-    double g_i[2];
     // Невязка
     double r_i[2];
 
@@ -56,6 +54,7 @@ void gauss_newton(double* parameters)
     int size = 7;
 
     // Массив векторов состояний численных производных
+    // 7 производных, каждая имеет составляющую по ra и по dec
     double* deriv_state[14];
     for (int j=0; j<14; j++)
         deriv_state[j] = (double*)malloc(sizeof(double)*STATE_SIZE_STAR);
@@ -102,7 +101,7 @@ void gauss_newton(double* parameters)
             for(int j=0; j<14; j++)
                 memcpy(deriv_state[j], x, sizeof(double)*STATE_SIZE_STAR);
 
-            // Добавляем и вычитаем eps
+            // Добавляем и вычитаем eps (Кроме производной по массе)
             for(int j=0; j<6; j++)
             {
                 deriv_state[j*2][j] += std::abs(cur_val[j+STATE_SIZE_STAR*file_number] / EPS);
@@ -120,7 +119,7 @@ void gauss_newton(double* parameters)
             // Вектор системы
             wrap_integration(x, (t-previous_t)*365.*86400., cur_val[size-1], rk_4);
 
-            // Интегрирование векторов производных не по массе
+            // Интегрирование векторов производных (Кроме производной по массе)
             for (int j=0; j<12; j++)
                 wrap_integration(deriv_state[j], (t-previous_t)*365.*86400., cur_val[size-1], rk_4);
 
@@ -131,16 +130,14 @@ void gauss_newton(double* parameters)
             // Вычисление невязки и проивзодных
 
             // Невязка
-            g_i[0] = c/d* x[1]; //ra под 1
-            g_i[1] = c/d* x[0];
+            r_i[0] = c/d* x[1] - ra; // ra под 1
+            r_i[1] = c/d* x[0] - dec; // dec под 0
 
-            r_i[0] = g_i[0] - ra;
-            r_i[1] = g_i[1] - dec;
-
+            // Взвешенная сумма квадратов невязок
             sum += pow(r_i[0], 2) / pow(ra_err, 2);
             sum += pow(r_i[1], 2) / pow(dec_err, 2);
 
-            // Производные не по массе
+            // Производные (Кроме производной по массе)
             for(int j=0; j<6; j++)
             {
                 // Центральные разности
