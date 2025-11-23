@@ -28,4 +28,4 @@ void rk4Free(rk4* rk);
 // x - вектор состояния звезды, deriv - вектор состояния производной
 // t - время, на которое требуется проинтегрировать систему
 // rk_4, array_for_deriv - технические переменные
-void wrap_integration(double* x, double* deriv, double t, double M_bh, rk4 rk_4, double** arrays_for_deriv);
+void wrap_integration(double* x, double t, double M_bh, rk4 rk_4);
