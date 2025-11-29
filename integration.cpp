@@ -7,33 +7,119 @@
 #include "constans.hpp"
 #include "normalize.hpp"
 
-
-
-void dxdt(double t, double* x, double* xdot, void* data)
+void init_deriv(double* x)
 {
-    struct simulation_data_star* sim_data = (struct simulation_data_star*)(data);
-
-    for (int i=0; i<sim_data->NBODIES; i++)
+    for (int i=0; i<6; i++)
     {
-        xdot[i*STATE_SIZE_STAR]   = x[i*STATE_SIZE_STAR+3];
-        xdot[i*STATE_SIZE_STAR+1] = x[i*STATE_SIZE_STAR+4];
-        xdot[i*STATE_SIZE_STAR+2] = x[i*STATE_SIZE_STAR+5];
-
-
-        double rx = x[i*STATE_SIZE_STAR];  // относительно центра (черной дыры)
-        double ry = x[i*STATE_SIZE_STAR+1];
-        double rz = x[i*STATE_SIZE_STAR+2];
-
-        double r3 = pow(sqrt(rx*rx + ry*ry + rz*rz), 3);
-
-        xdot[i*STATE_SIZE_STAR+3] = (-sim_data->Grav*sim_data->M_bh * rx) / r3;
-        xdot[i*STATE_SIZE_STAR+4] = (-sim_data->Grav*sim_data->M_bh * ry) / r3;
-        xdot[i*STATE_SIZE_STAR+5] = (-sim_data->Grav*sim_data->M_bh * rz) / r3;
+        // Авто. производная по массе иниц. 0
+        x[STATE_SIZE_STAR + i] = 0;
+        // Авто. производная по нач. ус. иниц. ед. мат.
+        for (int j=0; j<5; j++)
+        {
+            if (i==j)
+                x[12 + i*5 +j] = 1;
+            else
+                x[12 + i*5 +j] = 0;
+        }
     }
+
 }
 
 
-void ode(rk4* self, double* x, int n, double t0, double t1, void (*f)(double, double*, double*, void*), void* data)
+
+void dxdt(double* x, double* xdot, void* data)
+{
+    simulation_data_star* sim_data = (simulation_data_star*)data;
+
+    // ------------ Звезда ------------
+
+    xdot[0] = x[3];
+    xdot[1] = x[4];
+    xdot[2] = x[5];
+
+    double rx = x[0];  // относительно центра (черной дыры)
+    double ry = x[1];
+    double rz = x[2];
+    double r3 = pow(sqrt(rx*rx + ry*ry + rz*rz), 3);
+    
+    xdot[3] = (-sim_data->Grav*sim_data->M_bh * rx) / r3;
+    xdot[4] = (-sim_data->Grav*sim_data->M_bh * ry) / r3;
+    xdot[5] = (-sim_data->Grav*sim_data->M_bh * rz) / r3;
+
+    // ------------ Производная по массе ------------
+
+    xdot[6] = x[9];
+    xdot[7] = x[10];
+    xdot[8] = x[11];
+
+    double x_sim = x[0];
+    double y_sim = x[1];
+    double z_sim = x[2];
+
+    double dxdm = x[6];
+    double dydm = x[7];
+    double dzdm = x[8];
+
+    double r = sqrt(pow(x_sim, 2) + pow(y_sim, 2) + pow(z_sim, 2));
+
+    r3 = pow(r, 3);
+    double r5 = pow(r, 5);
+
+    // Коэффициенты матрицы Якоби
+    double Axx = -sim_data->Grav * sim_data->M_bh * (1.0/r3 - 3.0*x_sim*x_sim/r5);
+    double Axy = 3.0 * sim_data->Grav * sim_data->M_bh * x_sim * y_sim / r5;
+    double Axz = 3.0 * sim_data->Grav * sim_data->M_bh * x_sim * z_sim / r5;
+
+    double Ayx = Axy;  // Симметрия
+    double Ayy = -sim_data->Grav * sim_data->M_bh * (1.0/r3 - 3.0*y_sim*y_sim/r5);
+    double Ayz = 3.0 * sim_data->Grav * sim_data->M_bh * y_sim * z_sim / r5;
+
+    double Azx = Axz;  // Симметрия
+    double Azy = Ayz;  // Симметрия
+    double Azz = -sim_data->Grav * sim_data->M_bh * (1.0/r3 - 3.0*z_sim*z_sim/r5);
+
+    // Прямые производные силы по массе
+    double dFxdM = -sim_data->Grav * x_sim / r3;
+    double dFydM = -sim_data->Grav * y_sim / r3;
+    double dFzdM = -sim_data->Grav * z_sim / r3;
+    // Уравнения для производных скоростей по массе
+    // d(dvx/dM)/dt = Axx*dxdm + Axy*dydm + Axz*dzdm + dFxdM
+    xdot[9] =   Axx * dxdm +  Axy * dydm + Axz * dzdm + dFxdM;
+    // d(dvy/dM)/dt = Ayx*dxdm + Ayy*dydm + Ayz*dzdm + dFydM
+    xdot[10] =  Ayx * dxdm + Ayy * dydm + Ayz * dzdm + dFydM;
+    // d(dvz/dM)/dt = Azx*dxdm + Azy*dydm + Azz*dzdm + dFzdM
+    xdot[11] =  Azx * dxdm + Azy * dydm + Azz * dzdm + dFzdM;
+
+    // ------------ Матрица производных по нач. ус. ------------
+
+    // Пока что начальные условия - x0, y0, z0, v_x0, v_y0
+
+    // Заполнение первых трех строк матрицы (dx/dx_0)^dot
+    // Это последние три строки матрицы dx/dx_0
+    for (int i=0; i<3; i++) // Первые три строки
+    {
+        for (int j=0; j<5; j++) // Кол-во параметров (пока 5)
+            xdot[12 + i*5 + j] = x[12 + (i+3)*5+j];
+    }
+
+    // Заполнение последних трех строк
+
+    // Четвертая строка
+    for (int j=0; j<5; j++)
+        xdot[12+3*5 + j] = Axx * x[12+ 5*0+ j] + Axy * x[12+ 5*1+ j] + Axz * x[12+ 5*2+ j];
+
+    // Пятая строка
+    for (int j=0; j<5; j++)
+        xdot[12+4*5 + j] = Ayx * x[12+ 5*0+ j] + Ayy * x[12+ 5*1+ j] + Ayz * x[12+ 5*2+ j];
+
+    // Шестая строка
+    for (int j=0; j<5; j++)
+        xdot[12+5*5 + j] = Azx * x[12+ 5*0+ j] + Azy * x[12+ 5*1+ j] + Azz * x[12+ 5*2+ j];
+    
+}
+
+
+void ode(rk4* self, double* x, int n, double t0, double t1, void (*f)(double*, double*, void*), void* data)
 {
 
     if (self->k1 == NULL)
@@ -53,22 +139,22 @@ void ode(rk4* self, double* x, int n, double t0, double t1, void (*f)(double, do
 
     double h = t1-t0;
 
-    f(t0, x, self->k1, data); // now k1 has the right part of f(t, x)
+    f(x, self->k1, data); // now k1 has the right part of f(t, x)
 
     for (int i=0; i<n; i++)
         self->tmp[i] = x[i] + h*0.5*self->k1[i]; // now tmp is x_n + h/2*k1
 
-    f(t0+h*0.5, self->tmp, self->k2, data);  // now k2 has the right part f(t/2, x_n+h/2*k1)
+    f(self->tmp, self->k2, data);  // now k2 has the right part f(t/2, x_n+h/2*k1)
 
     for (int i=0; i<n; i++)
         self->tmp[i] = x[i] + h*0.5*self->k2[i];  // now tmp is x_n + h/2*k2
 
-    f(t0+h*0.5, self->tmp, self->k3, data);  // now k3 has the right part f(t/2, x_n+h/2*k2)
+    f(self->tmp, self->k3, data);  // now k3 has the right part f(t/2, x_n+h/2*k2)
 
     for (int i=0; i<n; i++)
         self->tmp[i] = x[i] + h*self->k3[i]; // now tmp is x_n + h*k3
 
-    f(t0, self->tmp, self->k4, data);  // now fx has the right part f(k3)
+    f(self->tmp, self->k4, data);  // now fx has the right part f(k3)
 
     for (int i=0; i<n; i++)
         x[i] +=  1./6.*h*(self->k1[i]+2*self->k2[i]+2*self->k3[i]+self->k4[i]);
@@ -100,7 +186,7 @@ void wrap_integration(double* x, double t, double M_bh, rk4 rk_4)
 
     while (std::abs(local_time) <= std::abs(t))
     {
-        ode(&rk_4, x, 1*STATE_SIZE_STAR, local_time, local_time+dt, dxdt, &data);
+        ode(&rk_4, x, STATE_SIZE_STAR_FULL, local_time, local_time+dt, dxdt, &data);
         local_time += dt;  // Увеличиваем время симуляции
     }
 

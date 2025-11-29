@@ -1,8 +1,9 @@
 #pragma once
 
-#define STATE_SIZE_STAR 6  // Размер вектора состояния системы
+#define STATE_SIZE_STAR_FULL 6 + 6 + 5*6 // Размер вектора состояния системы
 
-#define STATE_SIZE_DERIV 6
+#define STATE_SIZE_STAR 6
+
 
 struct kepler_orbit_denorm {
     double a;     // Semi-major axis (arcsec)
@@ -40,14 +41,3 @@ struct simulation_data_star {
     double M_bh;
     int NBODIES;
 };
-
-struct simulation_data_deriv{
-    double Grav;
-    double M_bh;
-    int NBODIES;
-    double* x;
-    double* y;
-    double* z;
-};
-
-

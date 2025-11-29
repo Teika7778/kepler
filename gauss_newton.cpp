@@ -1,6 +1,7 @@
 #include <cmath>
 #include <iostream>
 #include <string.h>
+#include <iomanip>
 
 #include "struct.hpp"
 #include "constans.hpp"
@@ -11,9 +12,6 @@
 #include "helper_functions.hpp"
 
 #include "gauss_newton.hpp"
-
-#define EPS 1e6
-
 
 void gauss_newton(double* parameters)
 {
@@ -46,28 +44,21 @@ void gauss_newton(double* parameters)
     // Переменные для численного интегрирования
 
     // Вектор состояния
-    double x[STATE_SIZE_STAR];
+    double x[STATE_SIZE_STAR_FULL];
     // Стуктура для метода Рунге-Кутты 4
     rk4 rk_4 = {NULL, NULL, NULL, NULL, NULL};
 
     // Количество параметров сейчас ХАРДКОД для одной звезды
-    int size = 7;
-
-    // Массив векторов состояний численных производных
-    // 7 производных, каждая имеет составляющую по ra и по dec
-    double* deriv_state[14];
-    for (int j=0; j<14; j++)
-        deriv_state[j] = (double*)malloc(sizeof(double)*STATE_SIZE_STAR);
+    int size = 6;
+    int full_size = 16; 
+    
 
     // Матрица AtWA
-    double** AtWA = (double**)malloc(sizeof(double*)*size);
-    for (int j=0; j<size; j++) AtWA[j] = (double*)malloc(sizeof(double)*size);
+    double** AtWA = (double**)malloc(sizeof(double*)*full_size);
+    for (int j=0; j<full_size; j++) AtWA[j] = (double*)malloc(sizeof(double)*full_size);
 
     // Вектор AtWr(betha)
-    double AtWr[size];
-
-    // Массив значений производных
-    double deriv_val[14];
+    double AtWr[full_size];
 
     while(++i != MAX_ITER_GAUSS_NEWTON)
     {
@@ -77,14 +68,14 @@ void gauss_newton(double* parameters)
         char buffer[256]; // Буфер для хранения строки
 
         // Заполнение нулями AtWA и AtWr(betha)
-        for (int m=0; m<size; m++)
+        for (int m=0; m<full_size; m++)
         {
             AtWr[m] = 0;
-            for (int k=0; k<size; k++) AtWA[m][k] = 0;
+            for (int k=0; k<full_size; k++) AtWA[m][k] = 0;
         }
 
         // Цикл по звездвм
-        for (size_t file_number=0; file_number<1; file_number++)
+        for (size_t file_number=0; file_number<3; file_number++)
         {
             rewind(files[file_number]);
 
@@ -94,19 +85,13 @@ void gauss_newton(double* parameters)
             if (file_number == 2) previous_t = 2004.511;
 
             // Инициализация вектора системы текущими значениями параметров
-            for(int j=0; j<STATE_SIZE_STAR; j++)
-                x[j] = cur_val[j + STATE_SIZE_STAR*file_number];
-            
-            // Копируем вектор состояния в векотры производных
-            for(int j=0; j<14; j++)
-                memcpy(deriv_state[j], x, sizeof(double)*STATE_SIZE_STAR);
+            for(int j=0; j<5; j++)
+                x[j] = cur_val[j + 5*file_number];
 
-            // Добавляем и вычитаем eps (Кроме производной по массе)
-            for(int j=0; j<6; j++)
-            {
-                deriv_state[j*2][j] += std::abs(cur_val[j+STATE_SIZE_STAR*file_number] / EPS);
-                deriv_state[j*2+1][j] -= std::abs(cur_val[j+STATE_SIZE_STAR*file_number] / EPS);
-            }
+            // Скорость по z не определяем
+            x[5] = 5.660631180e+03;
+
+            init_deriv(x);
                      
             while (fgets(buffer, sizeof(buffer), files[file_number]) != NULL)
             {
@@ -117,15 +102,32 @@ void gauss_newton(double* parameters)
 
             // Численное интегирование:
             // Вектор системы
-            wrap_integration(x, (t-previous_t)*365.*86400., cur_val[size-1], rk_4);
+            wrap_integration(x, (t-previous_t)*365.*86400., cur_val[full_size-1], rk_4);
 
-            // Интегрирование векторов производных (Кроме производной по массе)
-            for (int j=0; j<12; j++)
-                wrap_integration(deriv_state[j], (t-previous_t)*365.*86400., cur_val[size-1], rk_4);
+            // Массив производных
+            double deriv[12];
 
-            // Интегрирование векторов производных по массе (требует eps в wrap_integration)
-            wrap_integration(deriv_state[12], (t-previous_t)*365.*86400., cur_val[size-1]+(cur_val[size-1]/EPS), rk_4);
-            wrap_integration(deriv_state[13], (t-previous_t)*365.*86400., cur_val[size-1]-(cur_val[size-1]/EPS), rk_4);
+            for (int j=0; j<size-1; j++)
+            {
+                deriv[j*2] = x[12 + 5*1 + j];
+                deriv[j*2+1] = x[12 + 5*0 + j];
+
+                // Маштабирем наблюдаемые величины
+                if (j == 0 or j == 1)
+                {
+                    deriv[j*2] *= c/d;
+                    deriv[j*2+1] *= c/d;
+                }
+            }
+
+            deriv[10] = c/d * x[7];
+            deriv[11] = c/d * x[6];
+
+            //std::cout << "DERIVATIVES" << std::endl;
+            //for (int j=0; j<6; j++)
+            //    std::cout << deriv[2*j] <<  " " << deriv[2*j+1]  <<std::endl;
+            //std::cout << std::endl;
+
 
             // Вычисление невязки и проивзодных
 
@@ -137,35 +139,13 @@ void gauss_newton(double* parameters)
             sum += pow(r_i[0], 2) / pow(ra_err, 2);
             sum += pow(r_i[1], 2) / pow(dec_err, 2);
 
-            // Производные (Кроме производной по массе)
-            for(int j=0; j<6; j++)
-            {
-                // Центральные разности
-                // По ra
-                deriv_val[j*2] = 
-                c/d*(deriv_state[j*2][1] - deriv_state[j*2+1][1])/(2*std::abs(cur_val[j+STATE_SIZE_STAR*file_number]/EPS));
-                // по dec
-                deriv_val[j*2+1]= 
-                c/d*(deriv_state[j*2][0] - deriv_state[j*2+1][0])/(2*std::abs(cur_val[j+STATE_SIZE_STAR*file_number]/EPS));
-
-                // Производные по z и v_z не нужно маштабировать
-                if (j==2 or j==5)
-                {
-                    deriv_val[j*2] /= (c/d);
-                    deriv_val[j*2+1] /= (c/d);
-                }
-            }
-
-            //Производные по массе
-            deriv_val[12] = c/d*(deriv_state[12][1] - deriv_state[13][1])/(2*std::abs(cur_val[size-1]/EPS));
-            deriv_val[13] = c/d*(deriv_state[12][0] - deriv_state[13][0])/(2*std::abs(cur_val[size-1]/EPS));
-
             // Заполнение AtWr(betha)
-            for(int j=0; j<size; j++)
+            for(int j=0; j<5; j++)
             {
-                AtWr[STATE_SIZE_STAR*file_number+j] += 
-                (1.0/pow(ra_err, 2))*r_i[0]*deriv_val[j*2] + (1.0/pow(dec_err, 2))*r_i[1]*deriv_val[j*2+1];
+                AtWr[5*file_number+j] += 
+                (1.0/pow(ra_err, 2))*r_i[0]*deriv[j*2] + (1.0/pow(dec_err, 2))*r_i[1]*deriv[j*2+1];
             }
+            
 
             // Заполнение AtWA
 
@@ -176,29 +156,29 @@ void gauss_newton(double* parameters)
             //  0    0    S_102  S_102M
             // S_2M S_55M S_102M S_2M+S_55M+S102_M
 
-            for (int j=0; j<STATE_SIZE_STAR; j++)
+            for (int j=0; j<size-1; j++)
             {
                 // Заполнение блока конкретной звезды
-                for (int k=0; k<6; k++)
+                for (int k=0; k<size-1; k++)
                 {
                     // Первая строка добавка по ra, вторая по dec
-                    AtWA[j + STATE_SIZE_STAR*file_number][k + STATE_SIZE_STAR*file_number] += 
-                    (1.0/pow(ra_err, 2)) * deriv_val[j*2] * deriv_val[k*2] +
-                    (1.0/pow(dec_err, 2)) * deriv_val[j*2+1] * deriv_val[k*2+1];
+                    AtWA[j + 5*file_number][k + 5*file_number] += 
+                    (1.0/pow(ra_err, 2)) * deriv[j*2] * deriv[k*2] +
+                    (1.0/pow(dec_err, 2)) * deriv[j*2+1] * deriv[k*2+1];
                 }
 
                 // Заполнение правого столбца
-                AtWA[j + STATE_SIZE_STAR*file_number][size-1] += 
-                (1.0/pow(ra_err, 2)) * deriv_val[12] * deriv_val[j*2] +
-                (1.0/pow(dec_err, 2)) * deriv_val[13] * deriv_val[j*2+1];
+                AtWA[j + 5*file_number][full_size-1] += 
+                (1.0/pow(ra_err, 2)) * deriv[10] * deriv[j*2] +
+                (1.0/pow(dec_err, 2)) * deriv[11] * deriv[j*2+1];
                 
                 // Заполнение нижней строки (Симметрия)
-                AtWA[size-1][j + STATE_SIZE_STAR*file_number] = AtWA[j + STATE_SIZE_STAR*file_number][size-1];
+                AtWA[full_size-1][j + 5*file_number] = AtWA[j + 5*file_number][full_size-1];
                 
                 // Заполнение правого нижнего угла
-                AtWA[size-1][size-1] += 
-                1.0/pow(ra_err, 2) * deriv_val[12] * deriv_val[12] +
-                1.0/pow(dec_err, 2) * deriv_val[13] * deriv_val[13];
+                AtWA[full_size-1][full_size-1] += 
+                1.0/pow(ra_err, 2) * deriv[10] * deriv[10] +
+                1.0/pow(dec_err, 2) * deriv[11] * deriv[11];
             }
 
             previous_t = t;
@@ -212,23 +192,26 @@ void gauss_newton(double* parameters)
         std::cout << "ERROR SUM: " << sum << std::endl;
         std::cout << std::endl;
 
-        for(int j=0; j<size; j++)
-            printf("%.2e ", cur_val[j]);
+
+        for(int j=0; j<full_size; j++)
+            printf("%.6e ", cur_val[j]);
         std::cout << std::endl;
+
+        
 
         std::cout << std::endl;
         std::cout << std::endl;
 
-        for(int j=0; j<size; j++)
+        for(int j=0; j<full_size; j++)
             printf("%.2e ", AtWr[j]);
         std::cout << std::endl;
 
         std::cout << std::endl;
         std::cout << std::endl;
 
-        for(int j=0; j<size; j++)
+        for(int j=0; j<full_size; j++)
         {
-            for(int k=0; k< size; k++)
+            for(int k=0; k< full_size; k++)
                 printf("%.2e ", AtWA[j][k]);
             std::cout << std::endl;
         }
@@ -236,19 +219,52 @@ void gauss_newton(double* parameters)
         std::cout << std::endl;
         std::cout << std::endl;
 
-        double w[size];
+        /*
+        
 
-        solve_eq(AtWA, AtWr, size, w);
+        double w[size];
+        int num = 5;
+
+        double* temp_matrix[num];
+        for (int j=0; j<num; j++)
+            temp_matrix[j] = (double*)malloc(sizeof(double)*num);
+
+        double temp_vector[num];
+
+        for (int j=0; j<num; j++)
+        {
+            for (int k=0; k<num; k++)
+                temp_matrix[j][k] = AtWA[j][k];
+            temp_vector[j] = AtWr[j];
+        }
+
+        
+
+        solve_eq(temp_matrix, temp_vector, num, w);
+
+        for (int j=0; j<num; j++)
+            free(temp_matrix[j]);
+
+        for(int j=num; j<7; j++)
+            w[j] =0;
+        w[5] = 0;
 
         for(int j=0; j<size; j++) cur_val[j] = cur_val[j] - w[j];
+        */
+
+        double w[full_size];
+
+        solve_eq(AtWA, AtWr, full_size, w);
+
+        for(int j=0; j<full_size; j++) cur_val[j] = cur_val[j] - w[j];
 
     }
 
     // Освобождение памяти
     rk4Free(&rk_4);
 
-    for (int j=0; j<14; j++)
-        free(deriv_state[j]);
+    //for (int j=0; j<14; j++)
+    //    free(deriv_state[j]);
     for (int j=0; j<size; j++)
         free(AtWA[j]);
     free(AtWA);
