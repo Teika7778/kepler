@@ -13,7 +13,7 @@
 
 #include "gauss_newton.hpp"
 
-void gauss_newton(double* parameters)
+void gauss_newton(double* parameters, int star_number)
 {
     // Счетчик цикла Ньютона
     int i = 0;
@@ -50,7 +50,7 @@ void gauss_newton(double* parameters)
 
     // Количество параметров сейчас ХАРДКОД для одной звезды
     int size = 6;
-    int full_size = 16; 
+    int full_size = star_number*5 + 1; 
     
 
     // Матрица AtWA
@@ -75,7 +75,7 @@ void gauss_newton(double* parameters)
         }
 
         // Цикл по звездвм
-        for (size_t file_number=0; file_number<3; file_number++)
+        for (size_t file_number=0; file_number<star_number; file_number++)
         {
             rewind(files[file_number]);
 
@@ -89,7 +89,10 @@ void gauss_newton(double* parameters)
                 x[j] = cur_val[j + 5*file_number];
 
             // Скорость по z не определяем
-            x[5] = 5.660631180e+03;
+            if (file_number == 0) x[5] = 5.660631180e+03;
+            if (file_number == 1) x[5] = 4412.44;
+            if (file_number == 2) x[5] = -7379.3;
+            
 
             init_deriv(x);
                      
@@ -145,6 +148,8 @@ void gauss_newton(double* parameters)
                 AtWr[5*file_number+j] += 
                 (1.0/pow(ra_err, 2))*r_i[0]*deriv[j*2] + (1.0/pow(dec_err, 2))*r_i[1]*deriv[j*2+1];
             }
+
+            AtWr[full_size-1] += (1.0/pow(ra_err, 2))*r_i[0]*deriv[10] + (1.0/pow(dec_err, 2))*r_i[1]*deriv[11];
             
 
             // Заполнение AtWA
@@ -192,13 +197,13 @@ void gauss_newton(double* parameters)
         std::cout << "ERROR SUM: " << sum << std::endl;
         std::cout << std::endl;
 
-
+        /*
         for(int j=0; j<full_size; j++)
             printf("%.6e ", cur_val[j]);
         std::cout << std::endl;
 
         
-
+        
         std::cout << std::endl;
         std::cout << std::endl;
 
@@ -259,6 +264,8 @@ void gauss_newton(double* parameters)
         for(int j=0; j<full_size; j++) cur_val[j] = cur_val[j] - w[j];
 
     }
+
+    std::cout << parameters[full_size-1] << std::endl;
 
     // Освобождение памяти
     rk4Free(&rk_4);
