@@ -126,12 +126,6 @@ void gauss_newton(double* parameters, int star_number)
             deriv[10] = c/d * x[7];
             deriv[11] = c/d * x[6];
 
-            //std::cout << "DERIVATIVES" << std::endl;
-            //for (int j=0; j<6; j++)
-            //    std::cout << deriv[2*j] <<  " " << deriv[2*j+1]  <<std::endl;
-            //std::cout << std::endl;
-
-
             // Вычисление невязки и проивзодных
 
             // Невязка
@@ -197,9 +191,8 @@ void gauss_newton(double* parameters, int star_number)
         std::cout << "ERROR SUM: " << sum << std::endl;
         std::cout << std::endl;
 
-        /*
         for(int j=0; j<full_size; j++)
-            printf("%.6e ", cur_val[j]);
+            printf("%.2e ", cur_val[j]);
         std::cout << std::endl;
 
         
@@ -224,39 +217,6 @@ void gauss_newton(double* parameters, int star_number)
         std::cout << std::endl;
         std::cout << std::endl;
 
-        /*
-        
-
-        double w[size];
-        int num = 5;
-
-        double* temp_matrix[num];
-        for (int j=0; j<num; j++)
-            temp_matrix[j] = (double*)malloc(sizeof(double)*num);
-
-        double temp_vector[num];
-
-        for (int j=0; j<num; j++)
-        {
-            for (int k=0; k<num; k++)
-                temp_matrix[j][k] = AtWA[j][k];
-            temp_vector[j] = AtWr[j];
-        }
-
-        
-
-        solve_eq(temp_matrix, temp_vector, num, w);
-
-        for (int j=0; j<num; j++)
-            free(temp_matrix[j]);
-
-        for(int j=num; j<7; j++)
-            w[j] =0;
-        w[5] = 0;
-
-        for(int j=0; j<size; j++) cur_val[j] = cur_val[j] - w[j];
-        */
-
         double w[full_size];
 
         solve_eq(AtWA, AtWr, full_size, w);
@@ -265,13 +225,9 @@ void gauss_newton(double* parameters, int star_number)
 
     }
 
-    std::cout << parameters[full_size-1] << std::endl;
-
     // Освобождение памяти
     rk4Free(&rk_4);
 
-    //for (int j=0; j<14; j++)
-    //    free(deriv_state[j]);
     for (int j=0; j<size; j++)
         free(AtWA[j]);
     free(AtWA);
