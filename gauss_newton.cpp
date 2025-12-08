@@ -179,7 +179,7 @@ void gauss_newton(double* parameters, int star_number, int* conditions)
             wrap_integration(x, (t-previous_t)*365.*86400., cur_val[full_size-1], rk_4);
 
             // Массив производных
-            double deriv[12];
+            double deriv[14];
 
             for (int j=0; j<6; j++)
             {
@@ -194,8 +194,8 @@ void gauss_newton(double* parameters, int star_number, int* conditions)
                 }
             }
 
-            deriv[10] = c/d * x[7];
-            deriv[11] = c/d * x[6];
+            deriv[12] = c/d * x[7];
+            deriv[13] = c/d * x[6];
 
             // Вычисление невязки и проивзодных
 
@@ -224,7 +224,7 @@ void gauss_newton(double* parameters, int star_number, int* conditions)
                 
             }
 
-            AtWr[full_size-1] += (1.0/pow(ra_err, 2))*r_i[0]*deriv[10] + (1.0/pow(dec_err, 2))*r_i[1]*deriv[11];
+            AtWr[full_size-1] += (1.0/pow(ra_err, 2))*r_i[0]*deriv[12] + (1.0/pow(dec_err, 2))*r_i[1]*deriv[13];
             
 
             // Заполнение AtWA
@@ -259,8 +259,8 @@ void gauss_newton(double* parameters, int star_number, int* conditions)
 
                     // Заполнение правого столбца
                     AtWA[t1 + size*file_number][full_size-1] += 
-                    (1.0/pow(ra_err, 2)) * deriv[10] * deriv[j*2] +
-                    (1.0/pow(dec_err, 2)) * deriv[11] * deriv[j*2+1];
+                    (1.0/pow(ra_err, 2)) * deriv[12] * deriv[j*2] +
+                    (1.0/pow(dec_err, 2)) * deriv[13] * deriv[j*2+1];
 
                     // Заполнение нижней строки (Симметрия)
                     AtWA[full_size-1][t1 + size*file_number] = AtWA[t1 + size*file_number][full_size-1];
@@ -271,8 +271,8 @@ void gauss_newton(double* parameters, int star_number, int* conditions)
 
             // Заполнение правого нижнего угла
             AtWA[full_size-1][full_size-1] += 
-            1.0/pow(ra_err, 2) * deriv[10] * deriv[10] +
-            1.0/pow(dec_err, 2) * deriv[11] * deriv[11];
+            1.0/pow(ra_err, 2) * deriv[12] * deriv[12] +
+            1.0/pow(dec_err, 2) * deriv[13] * deriv[13];
 
 
             previous_t = t;

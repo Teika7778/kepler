@@ -40,12 +40,16 @@ int main()
     three_stars[17] = -7379.3  + 7379.3 / EPS;
     three_stars[18] = 1e32;
 
-    int conditions[6] = {1, 1, 1, 1, 1, 0};
+    int x, y, z, vx, vy, vz;
+
+    scanf("%d %d %d %d %d %d", &x, &y, &z, &vx, &vy, &vz);
+
+    int conditions[6] = {x, y, z, vx, vy, vz};
     int size=0;
     for(int i=0; i<6; i++)
         if(conditions[i]==1) size++;
 
-    int num_star = 3;
+    int num_star = 1;
 
     double result_vector[size*num_star+1];
 
