@@ -89,9 +89,9 @@ void gauss_newton(double* parameters, int star_number)
                 x[j] = cur_val[j + 5*file_number];
 
             // Скорость по z не определяем
-            if (file_number == 0) x[5] = 5.660631180e+03;
-            if (file_number == 1) x[5] = 4412.44;
-            if (file_number == 2) x[5] = -7379.3;
+            if (file_number == 0) x[5] = -1.98566e+06;
+            if (file_number == 1) x[5] = -39845.1;
+            if (file_number == 2) x[5] = 577556;
             
 
             init_deriv(x);
@@ -173,12 +173,12 @@ void gauss_newton(double* parameters, int star_number)
                 
                 // Заполнение нижней строки (Симметрия)
                 AtWA[full_size-1][j + 5*file_number] = AtWA[j + 5*file_number][full_size-1];
-                
-                // Заполнение правого нижнего угла
-                AtWA[full_size-1][full_size-1] += 
-                1.0/pow(ra_err, 2) * deriv[10] * deriv[10] +
-                1.0/pow(dec_err, 2) * deriv[11] * deriv[11];
             }
+
+            // Заполнение правого нижнего угла
+            AtWA[full_size-1][full_size-1] += 
+            1.0/pow(ra_err, 2) * deriv[10] * deriv[10] +
+            1.0/pow(dec_err, 2) * deriv[11] * deriv[11];
 
             previous_t = t;
 
