@@ -13,32 +13,32 @@ int main()
 {
     double three_stars[19];
 
-    double EPS = 5;
+    double EPS = 5000000000;
 
     // Хард код, параметры s2 на первом наблюдении
-    three_stars[0] = -1.34542432318288867188e+13 - -1.34542432318288867188e+13/ EPS;
-    three_stars[1] = 2.74369376973100244141e+12 + 2.74369376973100244141e+12 / EPS;
-    three_stars[2] = 1.17902665512916289062e+13 - 1.17902665512916289062e+13 / EPS;
-    three_stars[3] = 9.63030905550202805898e+03 + 9.63030905550202805898e+03 / EPS;
-    three_stars[4] = 2.38743901750857585284e+04 - 2.38743901750857585284e+04 / EPS;
-    three_stars[5] = 5.660631180e+03 - 5.660631180e+03 / EPS;
+    three_stars[0] = 2.14992e+13 - 2.14992e+13/ EPS;
+    three_stars[1] = 3.59558e+13 + 3.59558e+13 / EPS;
+    three_stars[2] = 3.17322e+12 - 3.17322e+12 / EPS;
+    three_stars[3] = 3.96405e+06 + 3.96405e+06 / EPS;
+    three_stars[4] = 1.91863e+06 - 1.91863e+06 / EPS;
+    three_stars[5] = -1.98566e+06;
 
     // Хард код, параметры s38 на первом наблюдении
-    three_stars[6] = 4.0707e+12 - 4.0707e+12/ EPS;
-    three_stars[7] = 3.11869e+13 + 3.11869e+13 / EPS;
-    three_stars[8] = 2.54138e+12 - 2.54138e+12 / EPS;
-    three_stars[9] = 18926.6 + 18926.6 / EPS;
-    three_stars[10] = -2617.61 + -2617.61 / EPS;
-    three_stars[11] = 4412.44 - 4412.44/ EPS;
+    three_stars[6] = 8.03064e+13 - 8.03064e+13/ EPS;
+    three_stars[7] = -8.03314e+13 -8.03314e+13 / EPS;
+    three_stars[8] = 1.52503e+13 - 1.52503e+13 / EPS;
+    three_stars[9] = 365942 + 365942 / EPS;
+    three_stars[10] = -2.54613e+06 + -2.54613e+06 / EPS;
+    three_stars[11] = -39845.1;
 
     // Хард код, параметры s55 на первом наблюдении
-    three_stars[12] = 3.06247e+13 - 3.06247e+13/ EPS;
-    three_stars[13] = -3.22222e+12 -3.22222e+12 / EPS;
-    three_stars[14] = 1.69223e+13 - 1.69223e+13 / EPS;
-    three_stars[15] = 1642.9 + 1642.9 / EPS;
-    three_stars[16] =-16531.6  -16531.6  / EPS;
-    three_stars[17] = -7379.3  + 7379.3 / EPS;
-    three_stars[18] = 1e32;
+    three_stars[12] = -1.94304e+14 + -1.94304e+14/ EPS;
+    three_stars[13] = 7.44603e+13 -7.44603e+13 / EPS;
+    three_stars[14] = -8.00027e+13 + -8.00027e+13 / EPS;
+    three_stars[15] = 478498 + 478498 / EPS;
+    three_stars[16] = 567817  -567817  / EPS;
+    three_stars[17] = 577556;
+    three_stars[18] = 8e36;
 
     int x, y, z, vx, vy, vz;
 
@@ -60,7 +60,7 @@ int main()
         if(conditions[i % 6] == 1)
             result_vector[tmp++] = three_stars[i];
     }
-    result_vector[size*num_star] = 1e32;
+    result_vector[size*num_star] = 8e36;
 
     gauss_newton(result_vector, num_star, conditions);
 }
