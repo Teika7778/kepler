@@ -1,6 +1,6 @@
 #pragma once
 
-#define STATE_SIZE_STAR_FULL 6 + 6 + 5*6 // Размер вектора состояния системы
+#define STATE_SIZE_STAR_FULL 6 + 6 + 6*6 // Размер вектора состояния системы
 
 #define STATE_SIZE_STAR 6
 

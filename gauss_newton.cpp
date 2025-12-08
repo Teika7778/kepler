@@ -13,7 +13,70 @@
 
 #include "gauss_newton.hpp"
 
-void gauss_newton(double* parameters, int star_number)
+
+void find_inverse(double** A, double** res, int size)
+{
+    for (int i=0; i<size; i++)
+    {
+        double answ[size];
+        double b[size];
+        for(int j=0; j<size; j++)
+        {
+            if (j == i) b[j] = 1;
+            else b[j] =0;
+        }
+        solve_eq(A, b, size, answ);
+
+        for (int j=0; j<size; j++)
+        {
+            res[j][i] = answ[j];
+        }
+    }
+}
+
+void init_star(double* x, int star_number)
+{
+    double EPS = 5;
+    switch (star_number)
+    {
+    case 0:
+        x[0] = -1.34542432318288867188e+13 - -1.34542432318288867188e+13/ EPS;
+        x[1] = 2.74369376973100244141e+12 + 2.74369376973100244141e+12 / EPS;
+        x[2] = 1.17902665512916289062e+13 - 1.17902665512916289062e+13 / EPS;
+        x[3] = 9.63030905550202805898e+03 + 9.63030905550202805898e+03 / EPS;
+        x[4] = 2.38743901750857585284e+04 - 2.38743901750857585284e+04 / EPS;
+        x[5] = 5.660631180e+03  + 5.660631180e+03/ EPS;
+        break;
+    case 1:
+        x[0] = 4.0707e+12 - 4.0707e+12/ EPS;
+        x[1] = 3.11869e+13 + 3.11869e+13 / EPS;
+        x[2] = 2.54138e+12 - 2.54138e+12 / EPS;
+        x[3] = 18926.6 + 18926.6 / EPS;
+        x[4] = -2617.61 + -2617.61 / EPS;
+        x[5] = 4412.44 - 4412.44/ EPS;
+        break;
+    case 2:
+        x[0] = 3.06247e+13 - 3.06247e+13/ EPS;
+        x[1] = -3.22222e+12 -3.22222e+12 / EPS;
+        x[2] = 1.69223e+13 - 1.69223e+13 / EPS;
+        x[3] = 1642.9 + 1642.9 / EPS;
+        x[4] =-16531.6  -16531.6  / EPS;
+        x[5] = -7379.3  + 7379.3 / EPS;
+        break;
+
+    default:
+        x[0] = 0;
+        x[1] = 0;
+        x[2] = 0;
+        x[3] = 0;
+        x[4] = 0;
+        x[5] = 0;
+        break;
+    }
+}
+
+
+void gauss_newton(double* parameters, int star_number, int* conditions)
 {
     // Счетчик цикла Ньютона
     int i = 0;
@@ -48,10 +111,12 @@ void gauss_newton(double* parameters, int star_number)
     // Стуктура для метода Рунге-Кутты 4
     rk4 rk_4 = {NULL, NULL, NULL, NULL, NULL};
 
-    // Количество параметров сейчас ХАРДКОД для одной звезды
-    int size = 6;
-    int full_size = star_number*5 + 1; 
-    
+    // Определяем размер в зависимости от количества параметров
+    int size = 0;
+    for(int j=0; j<6; j++)
+        if (conditions[j] == 1) size += 1;
+
+    int full_size = star_number*size + 1; 
 
     // Матрица AtWA
     double** AtWA = (double**)malloc(sizeof(double*)*full_size);
@@ -84,16 +149,22 @@ void gauss_newton(double* parameters, int star_number)
             if (file_number == 1) previous_t = 2004.511;
             if (file_number == 2) previous_t = 2004.511;
 
+            init_star(x, file_number);
+
+            int tmp = 0;
+
             // Инициализация вектора системы текущими значениями параметров
-            for(int j=0; j<5; j++)
-                x[j] = cur_val[j + 5*file_number];
+            for(int j=0; j<6; j++)
+            {
+                if (conditions[j] == 1)
+                {
+                    x[j] = cur_val[tmp + size*file_number];
+                    tmp++;
+                }
+                
+            }    
 
-            // Скорость по z не определяем
-            if (file_number == 0) x[5] = 5.660631180e+03;
-            if (file_number == 1) x[5] = 4412.44;
-            if (file_number == 2) x[5] = -7379.3;
-            
-
+            // Инициализация авто производных
             init_deriv(x);
                      
             while (fgets(buffer, sizeof(buffer), files[file_number]) != NULL)
@@ -110,10 +181,10 @@ void gauss_newton(double* parameters, int star_number)
             // Массив производных
             double deriv[12];
 
-            for (int j=0; j<size-1; j++)
+            for (int j=0; j<6; j++)
             {
-                deriv[j*2] = x[12 + 5*1 + j];
-                deriv[j*2+1] = x[12 + 5*0 + j];
+                deriv[j*2] = x[12 + 6*1 + j];
+                deriv[j*2+1] = x[12 + 6*0 + j];
 
                 // Маштабирем наблюдаемые величины
                 if (j == 0 or j == 1)
@@ -136,11 +207,21 @@ void gauss_newton(double* parameters, int star_number)
             sum += pow(r_i[0], 2) / pow(ra_err, 2);
             sum += pow(r_i[1], 2) / pow(dec_err, 2);
 
+            // Техническая переменная для заполнения AtWr
+            // Работает как второй счетчик цикла, который срабатывает
+            // Только на тех значениях где conditions[j] == 1
+            int t0 = 0;
+
             // Заполнение AtWr(betha)
-            for(int j=0; j<5; j++)
+            for(int j=0; j<6; j++)
             {
-                AtWr[5*file_number+j] += 
-                (1.0/pow(ra_err, 2))*r_i[0]*deriv[j*2] + (1.0/pow(dec_err, 2))*r_i[1]*deriv[j*2+1];
+                if (conditions[j] == 1)
+                {
+                    AtWr[size*file_number+t0] += 
+                    (1.0/pow(ra_err, 2))*r_i[0]*deriv[j*2] + (1.0/pow(dec_err, 2))*r_i[1]*deriv[j*2+1];
+                    t0++;
+                }
+                
             }
 
             AtWr[full_size-1] += (1.0/pow(ra_err, 2))*r_i[0]*deriv[10] + (1.0/pow(dec_err, 2))*r_i[1]*deriv[11];
@@ -155,30 +236,44 @@ void gauss_newton(double* parameters, int star_number)
             //  0    0    S_102  S_102M
             // S_2M S_55M S_102M S_2M+S_55M+S102_M
 
-            for (int j=0; j<size-1; j++)
-            {
-                // Заполнение блока конкретной звезды
-                for (int k=0; k<size-1; k++)
-                {
-                    // Первая строка добавка по ra, вторая по dec
-                    AtWA[j + 5*file_number][k + 5*file_number] += 
-                    (1.0/pow(ra_err, 2)) * deriv[j*2] * deriv[k*2] +
-                    (1.0/pow(dec_err, 2)) * deriv[j*2+1] * deriv[k*2+1];
-                }
+            // Аналогичные прошлой тех перменные
+            int t1 = 0, t2=0;
 
-                // Заполнение правого столбца
-                AtWA[j + 5*file_number][full_size-1] += 
-                (1.0/pow(ra_err, 2)) * deriv[10] * deriv[j*2] +
-                (1.0/pow(dec_err, 2)) * deriv[11] * deriv[j*2+1];
-                
-                // Заполнение нижней строки (Симметрия)
-                AtWA[full_size-1][j + 5*file_number] = AtWA[j + 5*file_number][full_size-1];
-                
-                // Заполнение правого нижнего угла
-                AtWA[full_size-1][full_size-1] += 
-                1.0/pow(ra_err, 2) * deriv[10] * deriv[10] +
-                1.0/pow(dec_err, 2) * deriv[11] * deriv[11];
+            for (int j=0; j<6; j++)
+            {
+                if (conditions[j] == 1)
+                {
+                    t2 = 0;
+                    // Заполнение блока конкретной звезды
+                    for (int k=0; k<6; k++)
+                    {
+                        if (conditions[k] == 1)
+                        {
+                            // Первая строка добавка по ra, вторая по dec
+                            AtWA[t1 + size*file_number][t2 + size*file_number] += 
+                            (1.0/pow(ra_err, 2)) * deriv[j*2] * deriv[k*2] +
+                            (1.0/pow(dec_err, 2)) * deriv[j*2+1] * deriv[k*2+1];
+                            t2++;
+                        }
+                    }
+
+                    // Заполнение правого столбца
+                    AtWA[t1 + size*file_number][full_size-1] += 
+                    (1.0/pow(ra_err, 2)) * deriv[10] * deriv[j*2] +
+                    (1.0/pow(dec_err, 2)) * deriv[11] * deriv[j*2+1];
+
+                    // Заполнение нижней строки (Симметрия)
+                    AtWA[full_size-1][t1 + size*file_number] = AtWA[t1 + size*file_number][full_size-1];
+
+                    t1++;
+                }
             }
+
+            // Заполнение правого нижнего угла
+            AtWA[full_size-1][full_size-1] += 
+            1.0/pow(ra_err, 2) * deriv[10] * deriv[10] +
+            1.0/pow(dec_err, 2) * deriv[11] * deriv[11];
+
 
             previous_t = t;
 
