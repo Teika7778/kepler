@@ -174,7 +174,7 @@ void rk4Free(rk4* rk)
 void wrap_integration(double* x, double t, double M_bh, rk4 rk_4)
 {
 
-    double dt = 86400;   // Шаг - день
+    double dt = 86400 / 20;   // Шаг - день
 
     if (t<0){
         dt *= -1;

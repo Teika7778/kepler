@@ -38,7 +38,7 @@ int main()
     three_stars[15] = 478498 + 478498 / EPS;
     three_stars[16] = 567817  -567817  / EPS;
     three_stars[17] = 577556;
-    three_stars[18] = 8e36;
+    three_stars[18] = 1e33;
 
     int x, y, z, vx, vy, vz;
 

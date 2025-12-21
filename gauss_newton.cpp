@@ -1,6 +1,7 @@
 #include <cmath>
 #include <iostream>
 #include <string.h>
+#include <math.h>
 #include <iomanip>
 
 #include "struct.hpp"
@@ -12,27 +13,6 @@
 #include "helper_functions.hpp"
 
 #include "gauss_newton.hpp"
-
-
-void find_inverse(double** A, double** res, int size)
-{
-    for (int i=0; i<size; i++)
-    {
-        double answ[size];
-        double b[size];
-        for(int j=0; j<size; j++)
-        {
-            if (j == i) b[j] = 1;
-            else b[j] =0;
-        }
-        solve_eq(A, b, size, answ);
-
-        for (int j=0; j<size; j++)
-        {
-            res[j][i] = answ[j];
-        }
-    }
-}
 
 void init_star(double* x, int star_number)
 {
@@ -87,6 +67,8 @@ void gauss_newton(double* parameters, int star_number, int* conditions)
     files[1] = fopen("data/s38.txt", "r");
     files[2] = fopen("data/s55.txt", "r");
 
+    FILE* s2_radial = fopen("data/s2_velocity.txt", "r");
+
     // Переменные для перевода метров в ra. и dec.
     double d = (double) R_BH_LY * (double) LIGHT_YEAR;
     double c = 180 / M_PI * 3600;
@@ -100,6 +82,8 @@ void gauss_newton(double* parameters, int star_number, int* conditions)
     // Переменные, считваемые из файла
     double t, ra, dec, ra_err, dec_err;
     double previous_t;
+    // Для скоростей
+    double v_z, v_z_err, r_v_i;
 
     // Невязка
     double r_i[2];
@@ -139,10 +123,14 @@ void gauss_newton(double* parameters, int star_number, int* conditions)
             for (int k=0; k<full_size; k++) AtWA[m][k] = 0;
         }
 
-        // Цикл по звездвм
-        for (size_t file_number=0; file_number<star_number; file_number++)
+        // Цикл по звездам
+        // -1 - файл с радиальными скоростями S_2
+        for (int file_counter=-1; file_counter<star_number; file_counter++)
         {
+            int file_number = file_counter;
+            if (file_counter == -1) file_number = 0;
             rewind(files[file_number]);
+            rewind(s2_radial);
 
             // Начало интегрирования в первом наблюдении (ХАРДКОД)
             if (file_number == 0) previous_t = 2002.578;
@@ -167,12 +155,23 @@ void gauss_newton(double* parameters, int star_number, int* conditions)
             // Инициализация авто производных
             init_deriv(x);
                      
-            while (fgets(buffer, sizeof(buffer), files[file_number]) != NULL)
+            while (1)
             {
+                if (file_counter == -1) {
+                     if (fgets(buffer, sizeof(buffer), s2_radial) == NULL) break;
+                } else {
+                    if (fgets(buffer, sizeof(buffer), files[file_number]) == NULL) break;
+                }
 
             // Чтение данных из файла
-            sscanf(buffer, "%lf %lf %lf %lf %lf",
+            if (file_counter == -1) // Радиальные скорости
+                sscanf(buffer, "%lf %lf %lf", &t, &v_z, &v_z_err);
+            else    // Остальное
+                sscanf(buffer, "%lf %lf %lf %lf %lf",
                    &t, &ra, &dec, &ra_err, &dec_err);
+
+            v_z *= 1e3;
+            v_z_err *= 1e3;
 
             // Численное интегирование:
             // Вектор системы
@@ -180,32 +179,50 @@ void gauss_newton(double* parameters, int star_number, int* conditions)
 
             // Массив производных
             double deriv[14];
+            double deriv_for_v_z[7];
 
             for (int j=0; j<6; j++)
             {
                 deriv[j*2] = x[12 + 6*1 + j];
                 deriv[j*2+1] = x[12 + 6*0 + j];
 
+                deriv_for_v_z[j] = x[12+6*5 + j];
+
                 // Маштабирем наблюдаемые величины
                 if (j == 0 or j == 1)
                 {
                     deriv[j*2] *= c/d;
                     deriv[j*2+1] *= c/d;
+                    deriv_for_v_z[j] *= c/d;
                 }
             }
 
+            // Производные по массе
             deriv[12] = c/d * x[7];
             deriv[13] = c/d * x[6];
+
+            deriv_for_v_z[6] = x[11];
 
             // Вычисление невязки и проивзодных
 
             // Невязка
-            r_i[0] = c/d* x[1] - ra; // ra под 1
-            r_i[1] = c/d* x[0] - dec; // dec под 0
+            if (file_counter == -1)
+            {
+                r_i[0] = x[5] - v_z;
+                r_i[1] = 0;
+            } else{
+                r_i[0] = c/d* x[1] - ra; // ra под 1
+                r_i[1] = c/d* x[0] - dec; // dec под 0
+            }
 
             // Взвешенная сумма квадратов невязок
-            sum += pow(r_i[0], 2) / pow(ra_err, 2);
-            sum += pow(r_i[1], 2) / pow(dec_err, 2);
+            if (file_counter == -1)
+            {
+                sum += pow(r_i[0], 2) / pow(v_z_err, 2);
+            } else{
+                sum += pow(r_i[0], 2) / pow(ra_err, 2);
+                sum += pow(r_i[1], 2) / pow(dec_err, 2);
+            }
 
             // Техническая переменная для заполнения AtWr
             // Работает как второй счетчик цикла, который срабатывает
@@ -217,14 +234,20 @@ void gauss_newton(double* parameters, int star_number, int* conditions)
             {
                 if (conditions[j] == 1)
                 {
-                    AtWr[size*file_number+t0] += 
+                    if (file_counter == -1)
+                        AtWr[size*file_number+t0] += 
+                    (1.0/pow(v_z_err, 2))*r_i[0]*deriv_for_v_z[j];
+                    else
+                        AtWr[size*file_number+t0] += 
                     (1.0/pow(ra_err, 2))*r_i[0]*deriv[j*2] + (1.0/pow(dec_err, 2))*r_i[1]*deriv[j*2+1];
                     t0++;
                 }
-                
             }
 
-            AtWr[full_size-1] += (1.0/pow(ra_err, 2))*r_i[0]*deriv[12] + (1.0/pow(dec_err, 2))*r_i[1]*deriv[13];
+            if (file_counter == -1)
+                AtWr[full_size-1] += (1.0/pow(v_z_err, 2))*r_i[0]*deriv_for_v_z[6];
+            else
+                AtWr[full_size-1] += (1.0/pow(ra_err, 2))*r_i[0]*deriv[12] + (1.0/pow(dec_err, 2))*r_i[1]*deriv[13];
             
 
             // Заполнение AtWA
@@ -249,8 +272,11 @@ void gauss_newton(double* parameters, int star_number, int* conditions)
                     {
                         if (conditions[k] == 1)
                         {
-                            // Первая строка добавка по ra, вторая по dec
-                            AtWA[t1 + size*file_number][t2 + size*file_number] += 
+                            if (file_counter == -1)
+                                AtWA[t1 + size*file_number][t2 + size*file_number] += 
+                            (1.0/pow(v_z_err, 2)) * deriv_for_v_z[j] * deriv_for_v_z[k];
+                            else // Первая строка добавка по ra, вторая по dec
+                                AtWA[t1 + size*file_number][t2 + size*file_number] += 
                             (1.0/pow(ra_err, 2)) * deriv[j*2] * deriv[k*2] +
                             (1.0/pow(dec_err, 2)) * deriv[j*2+1] * deriv[k*2+1];
                             t2++;
@@ -258,7 +284,11 @@ void gauss_newton(double* parameters, int star_number, int* conditions)
                     }
 
                     // Заполнение правого столбца
-                    AtWA[t1 + size*file_number][full_size-1] += 
+                    if (file_counter == -1)
+                        AtWA[t1 + size*file_number][full_size-1] += 
+                    (1.0/pow(v_z_err, 2)) * deriv_for_v_z[6] * deriv_for_v_z[j];
+                    else
+                        AtWA[t1 + size*file_number][full_size-1] += 
                     (1.0/pow(ra_err, 2)) * deriv[12] * deriv[j*2] +
                     (1.0/pow(dec_err, 2)) * deriv[13] * deriv[j*2+1];
 
@@ -270,7 +300,11 @@ void gauss_newton(double* parameters, int star_number, int* conditions)
             }
 
             // Заполнение правого нижнего угла
-            AtWA[full_size-1][full_size-1] += 
+            if (file_counter == -1)
+                AtWA[full_size-1][full_size-1] += 
+            1.0/pow(v_z_err, 2) * deriv_for_v_z[6] * deriv_for_v_z[6];
+            else
+                AtWA[full_size-1][full_size-1] += 
             1.0/pow(ra_err, 2) * deriv[12] * deriv[12] +
             1.0/pow(dec_err, 2) * deriv[13] * deriv[13];
 
@@ -287,7 +321,10 @@ void gauss_newton(double* parameters, int star_number, int* conditions)
         std::cout << std::endl;
 
         for(int j=0; j<full_size; j++)
+            {
             printf("%.2e ", cur_val[j]);
+            if (isnan(cur_val[j])) return;
+            }
         std::cout << std::endl;
 
         
@@ -330,5 +367,6 @@ void gauss_newton(double* parameters, int star_number, int* conditions)
     fclose(files[0]);
     fclose(files[1]);
     fclose(files[2]);
+    fclose(s2_radial);
 
 }
