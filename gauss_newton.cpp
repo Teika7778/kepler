@@ -40,28 +40,28 @@ void init_star(double* x, int star_number)
     switch (star_number)
     {
     case 0:
-        x[0] = 2.14992e+13 - 2.14992e+13/ EPS;
-        x[1] = 3.59558e+13 + 3.59558e+13 / EPS;
-        x[2] = 3.17322e+12 - 3.17322e+12 / EPS;
-        x[3] = 3.96405e+06 + 3.96405e+06 / EPS;
-        x[4] = 1.91863e+06 - 1.91863e+06 / EPS;
-        x[5] = -1.98566e+06;
+        x[0] = (2.14992e+13 - 2.14992e+13/ EPS) / AU;
+        x[1] = (3.59558e+13 + 3.59558e+13 / EPS) / AU;
+        x[2] = (3.17322e+12 - 3.17322e+12 / EPS) / AU;
+        x[3] = (3.96405e+06 + 3.96405e+06 / EPS) / AU * DAY * YEAR;
+        x[4] = (1.91863e+06 - 1.91863e+06 / EPS) / AU * DAY * YEAR;
+        x[5] = (-1.98566e+06) / AU * DAY * YEAR;
         break;
     case 1:
-        x[0] = 8.03064e+13 - 8.03064e+13/ EPS;
-        x[1] = -8.03314e+13 -8.03314e+13 / EPS;
-        x[2] = 1.52503e+13 - 1.52503e+13 / EPS;
-        x[3] = 365942 + 365942 / EPS;
-        x[4] = -2.54613e+06 + -2.54613e+06 / EPS;
-        x[5] = -39845.1;
+        x[0] = (8.03064e+13 - 8.03064e+13/ EPS ) / AU;
+        x[1] = (-8.03314e+13 -8.03314e+13 / EPS) / AU;
+        x[2] = (1.52503e+13 - 1.52503e+13 / EPS) / AU;
+        x[3] = (365942 + 365942 / EPS) / AU * DAY * YEAR;
+        x[4] = (-2.54613e+06 + -2.54613e+06 / EPS) / AU * DAY * YEAR;
+        x[5] = (-39845.1) / AU * DAY * YEAR;
         break;
     case 2:
-        x[0] = -1.94304e+14 + -1.94304e+14/ EPS;
-        x[1] = 7.44603e+13 -7.44603e+13 / EPS;
-        x[2] = -8.00027e+13 + -8.00027e+13 / EPS;
-        x[3] = 478498 + 478498 / EPS;
-        x[4] = 567817  -567817  / EPS;
-        x[5] = 577556;
+        x[0] = (-1.94304e+14 + -1.94304e+14/ EPS) / AU;
+        x[1] = (7.44603e+13 -7.44603e+13 / EPS) / AU;
+        x[2] = (-8.00027e+13 + -8.00027e+13 / EPS) / AU;
+        x[3] = (478498 + 478498 / EPS) / AU * DAY * YEAR;
+        x[4] = (567817  -567817  / EPS) / AU * DAY * YEAR;
+        x[5] = (577556) / AU * DAY * YEAR;
         break;
 
     default:
@@ -125,6 +125,9 @@ void gauss_newton(double* parameters, int star_number, int* conditions)
     // Вектор AtWr(betha)
     double AtWr[full_size];
 
+    // Предобуславливатель Якоби
+    double Preconditioner[full_size];
+
     while(++i != MAX_ITER_GAUSS_NEWTON)
     {
 
@@ -176,7 +179,7 @@ void gauss_newton(double* parameters, int star_number, int* conditions)
 
             // Численное интегирование:
             // Вектор системы
-            wrap_integration(x, (t-previous_t)*365.*86400., cur_val[full_size-1], rk_4);
+            wrap_integration(x, (t-previous_t), cur_val[full_size-1], rk_4);
 
             // Массив производных
             double deriv[14];
@@ -189,19 +192,19 @@ void gauss_newton(double* parameters, int star_number, int* conditions)
                 // Маштабирем наблюдаемые величины
                 if (j == 0 or j == 1)
                 {
-                    deriv[j*2] *= c/d;
-                    deriv[j*2+1] *= c/d;
+                    deriv[j*2] /= R_BH_PC;
+                    deriv[j*2+1] /= R_BH_PC;
                 }
             }
 
-            deriv[12] = c/d * x[7];
-            deriv[13] = c/d * x[6];
+            deriv[12] = x[7] / R_BH_PC;
+            deriv[13] = x[6] / R_BH_PC;
 
             // Вычисление невязки и проивзодных
 
             // Невязка
-            r_i[0] = c/d* x[1] - ra; // ra под 1
-            r_i[1] = c/d* x[0] - dec; // dec под 0
+            r_i[0] = x[1] / R_BH_PC - ra; // ra под 1
+            r_i[1] = x[0] / R_BH_PC - dec; // dec под 0
 
             // Взвешенная сумма квадратов невязок
             sum += pow(r_i[0], 2) / pow(ra_err, 2);
@@ -278,6 +281,32 @@ void gauss_newton(double* parameters, int star_number, int* conditions)
             previous_t = t;
 
             }
+
+            // Заполнение значений предобуславливателя (кроме массы)
+
+            int t3=0;
+
+            for(int i=0; i<6; i++)
+            {
+                if (conditions[i] == 1)
+                {
+                    Preconditioner[size*file_number+t3] = 1./sqrt(AtWA[t3+ size*file_number][t3+ size*file_number]);
+                    t3++;
+                }
+            }
+        }
+
+        // Заполнение значений предобуславливателя (масса)
+
+        Preconditioner[full_size-1] = 1./sqrt(AtWA[full_size-1][full_size-1]);
+
+        // Диагональное предобуславливание Якоби
+
+        for(int i=0; i<full_size; i++)
+        {
+            AtWr[i] *= Preconditioner[i];
+            for(int j=0; j<full_size; j++)
+                AtWA[i][j] *= Preconditioner[i]*Preconditioner[j];
         }
 
         std::cout << "------------ITERATION " << i << " -----------------" << std::endl;
@@ -287,10 +316,14 @@ void gauss_newton(double* parameters, int star_number, int* conditions)
         std::cout << std::endl;
 
         for(int j=0; j<full_size; j++)
+        {
+            if (std::isnan(cur_val[j])) return;
+            if (j ==  full_size-1)
+                printf("%.2e ", cur_val[j]*M_SUN);
+            else
             printf("%.2e ", cur_val[j]);
+        }
         std::cout << std::endl;
-
-        
         
         std::cout << std::endl;
         std::cout << std::endl;
@@ -316,7 +349,8 @@ void gauss_newton(double* parameters, int star_number, int* conditions)
 
         solve_eq(AtWA, AtWr, full_size, w);
 
-        for(int j=0; j<full_size; j++) cur_val[j] = cur_val[j] - w[j];
+        for(int j=0; j<full_size; j++)
+            cur_val[j] = cur_val[j] - w[j]*Preconditioner[j];
 
     }
 

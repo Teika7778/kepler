@@ -174,13 +174,13 @@ void rk4Free(rk4* rk)
 void wrap_integration(double* x, double t, double M_bh, rk4 rk_4)
 {
 
-    double dt = 86400;   // Шаг - день
+    double dt = 1./YEAR;   // Шаг - день
 
     if (t<0){
         dt *= -1;
     }
 
-    struct simulation_data_star data = {G, M_bh, 1};  // Дополнительные данные для ode
+    struct simulation_data_star data = {G_ASTR, M_bh, 1};  // Дополнительные данные для ode
 
     double local_time = 0;
 
