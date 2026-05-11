@@ -137,6 +137,9 @@ void gauss_newton(double* parameters, int star_number, int* conditions)
     // Вектор AtWr(betha)
     double AtWr[full_size];
 
+    // Предобуславливатель Якоби
+    double Preconditioner[full_size];
+
     while(++i != MAX_ITER_GAUSS_NEWTON)
     {
 
@@ -380,6 +383,29 @@ void gauss_newton(double* parameters, int star_number, int* conditions)
             previous_t = t;
 
             }
+            int t3=0;
+
+            for(int i=0; i<6; i++)
+            {
+                if (conditions[i] == 1)
+                {
+                    Preconditioner[size*file_number+t3] = 1./sqrt(AtWA[t3+ size*file_number][t3+ size*file_number]);
+                    t3++;
+                }
+            }
+        }
+
+        // Заполнение значений предобуславливателя (масса)
+
+        Preconditioner[full_size-1] = 1./sqrt(AtWA[full_size-1][full_size-1]);
+
+        // Диагональное предобуславливание Якоби
+
+        for(int i=0; i<full_size; i++)
+        {
+            AtWr[i] *= Preconditioner[i];
+            for(int j=0; j<full_size; j++)
+                AtWA[i][j] *= Preconditioner[i]*Preconditioner[j];
         }
 
         
@@ -423,7 +449,7 @@ void gauss_newton(double* parameters, int star_number, int* conditions)
 
         solve_eq(AtWA, AtWr, full_size, w);
 
-        for(int j=0; j<full_size; j++) cur_val[j] = cur_val[j] - 0.01*w[j];
+        for(int j=0; j<full_size; j++) cur_val[j] = cur_val[j] -Preconditioner[j]*w[j];
 
     }
 
