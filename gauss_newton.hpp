@@ -1,6 +1,6 @@
 #pragma once
 
-#define MAX_ITER_GAUSS_NEWTON 5
+#define MAX_ITER_GAUSS_NEWTON 1500
 
 void gauss_newton(double* parameters, int star_number, int* conditions);
 

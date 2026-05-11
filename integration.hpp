@@ -22,3 +22,6 @@ void rk4Free(rk4* rk);
 // t - время, на которое требуется проинтегрировать систему
 // rk_4, array_for_deriv - технические переменные
 void wrap_integration(double* x, double t, double M_bh, rk4 rk_4);
+
+
+void init_star_state(double* x, double M_bh, double t0);

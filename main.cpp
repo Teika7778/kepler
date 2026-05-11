@@ -11,40 +11,39 @@
 
 int main()
 {
+
     double three_stars[19];
 
-    double EPS = 5000000000;
-
     // Хард код, параметры s2 на первом наблюдении
-    three_stars[0] = 2.14992e+13 - 2.14992e+13/ EPS;
-    three_stars[1] = 3.59558e+13 + 3.59558e+13 / EPS;
-    three_stars[2] = 3.17322e+12 - 3.17322e+12 / EPS;
-    three_stars[3] = 3.96405e+06 + 3.96405e+06 / EPS;
-    three_stars[4] = 1.91863e+06 - 1.91863e+06 / EPS;
-    three_stars[5] = -1.98566e+06;
+    three_stars[0] = 0.126;  // a
+    three_stars[1] = 0.884;  // e
+    three_stars[2] = 71.36;   // w
+    three_stars[3] = 234.50;  // omega
+    three_stars[4] = 136.78;  // i
+    three_stars[5] = 2002.32; // T0
 
     // Хард код, параметры s38 на первом наблюдении
-    three_stars[6] = 8.03064e+13 - 8.03064e+13/ EPS;
-    three_stars[7] = -8.03314e+13 -8.03314e+13 / EPS;
-    three_stars[8] = 1.52503e+13 - 1.52503e+13 / EPS;
-    three_stars[9] = 365942 + 365942 / EPS;
-    three_stars[10] = -2.54613e+06 + -2.54613e+06 / EPS;
-    three_stars[11] = -39845.1;
+    three_stars[6] = 0.140;  // a
+    three_stars[7] = 0.818;  // e
+    three_stars[8] = 18.4;   // w
+    three_stars[9] = 101.8;  // omega
+    three_stars[10] = 166.22;  // i
+    three_stars[11] = 2003.30; // T0
 
     // Хард код, параметры s55 на первом наблюдении
-    three_stars[12] = -1.94304e+14 + -1.94304e+14/ EPS;
-    three_stars[13] = 7.44603e+13 -7.44603e+13 / EPS;
-    three_stars[14] = -8.00027e+13 + -8.00027e+13 / EPS;
-    three_stars[15] = 478498 + 478498 / EPS;
-    three_stars[16] = 567817  -567817  / EPS;
-    three_stars[17] = 577556;
+    three_stars[12] = 0.109;  // a
+    three_stars[13] = 0.74;  // e
+    three_stars[14] = 133.5;   // w
+    three_stars[15] = 129.9;  // omega
+    three_stars[16] = 141.7;  // i
+    three_stars[17] = 2009.31; // T0
     three_stars[18] = 8e36;
 
-    int x, y, z, vx, vy, vz;
+    int a, e, w, omega, i, T0;
 
-    scanf("%d %d %d %d %d %d", &x, &y, &z, &vx, &vy, &vz);
+    scanf("%d %d %d %d %d %d", &a, &e, &w, &omega, &i, &T0);
 
-    int conditions[6] = {x, y, z, vx, vy, vz};
+    int conditions[6] = {a, e, w, omega, i, T0};
     int size=0;
     for(int i=0; i<6; i++)
         if(conditions[i]==1) size++;

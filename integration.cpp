@@ -191,3 +191,24 @@ void wrap_integration(double* x, double t, double M_bh, rk4 rk_4)
     }
 
 }
+
+
+void init_star_state(double* x, double M_bh, double t0)
+{
+    double pos[3];
+    double velo[3];
+    kepler_orbit_denorm orbit_denorm =
+    {
+        x[0], x[1], x[2], x[3], x[4], x[5], t0   
+    };
+    kepler_orbit orbit;
+    //orbit_denorm.t0 = orbit_denorm.T0 ;
+    normalize(&orbit_denorm, &orbit, R_BH_LY, M_bh);
+    double grav = M_bh * G;
+    kepler_to_cart(&orbit, grav, pos, velo);
+    for (int j = 0; j < 3; j++)
+    {
+        x[j] = pos[j];
+        x[j + 3] = velo[j];
+    }
+}
