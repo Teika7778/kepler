@@ -48,7 +48,7 @@ int main()
     for(int i=0; i<6; i++)
         if(conditions[i]==1) size++;
 
-    int num_star = 1;
+    int num_star = 3;
 
     double result_vector[size*num_star+1];
 
