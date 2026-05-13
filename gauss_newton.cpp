@@ -23,7 +23,7 @@ void find_inverse(double** A, double** res, int size)
         for(int j=0; j<size; j++)
         {
             if (j == i) b[j] = 1;
-            else b[j] =0;
+            else b[j] = 0;
         }
         solve_eq(A, b, size, answ);
 
@@ -77,6 +77,9 @@ void init_star(double* x, int star_number)
 
 void gauss_newton(double* parameters, int star_number, int* conditions)
 {
+    // Все возможнные производные (потом будут перенесены только нужные)
+    double* deriv_a = (double*) malloc(sizeof(double) * 14);
+    double* deriv_in = (double*) malloc(sizeof(double) * 7);
     // Счетчик цикла Ньютона
     int i = 0;
 
@@ -117,7 +120,7 @@ void gauss_newton(double* parameters, int star_number, int* conditions)
     for(int j=0; j<6; j++)
         if (conditions[j] == 1) size += 1;
 
-    int full_size = star_number*size + 1; 
+    int full_size = star_number*size + 1;
 
     // кол-во орбит для центральных разностей
     int deriv_arr_size = (size + 1) * 2;
@@ -126,7 +129,7 @@ void gauss_newton(double* parameters, int star_number, int* conditions)
     double EPS = 1e2;
 
     // Массив векторов состояний численных производных
-    double* deriv_state[deriv_arr_size];  
+    double* deriv_state[deriv_arr_size];
     for (int j=0; j<deriv_arr_size; j++)
         deriv_state[j] = (double*)malloc(sizeof(double)*STATE_SIZE_STAR_FULL);
 
@@ -182,7 +185,7 @@ void gauss_newton(double* parameters, int star_number, int* conditions)
             for(int j=0; j<deriv_arr_size; j++)
                 memcpy(deriv_state[j], x, sizeof(double)*STATE_SIZE_STAR_FULL);
 
-            tmp = 0;    
+            tmp = 0;
             // Добавляем и вычитаем eps (кроме производных по массе)
             for(int j=0; j<6; j++)
             {
@@ -207,7 +210,7 @@ void gauss_newton(double* parameters, int star_number, int* conditions)
             for(int j=0; j< deriv_arr_size-2; j++)
             {
                 init_star_state(deriv_state[j], cur_val[full_size-1], previous_t);
-                init_deriv(deriv_state[j]);       
+                init_deriv(deriv_state[j]);
             }
 
             //std::cout << "Первая траектория:\n";
@@ -223,12 +226,12 @@ void gauss_newton(double* parameters, int star_number, int* conditions)
             // С массой
 
             init_star_state(deriv_state[deriv_arr_size-2], cur_val[full_size-1]+(cur_val[full_size-1]/EPS), previous_t);
-            init_deriv(deriv_state[deriv_arr_size-2]);       
+            init_deriv(deriv_state[deriv_arr_size-2]);
 
             init_star_state(deriv_state[deriv_arr_size-1], cur_val[full_size-1]-(cur_val[full_size-1]/EPS), previous_t);
-            init_deriv(deriv_state[deriv_arr_size-1]);       
+            init_deriv(deriv_state[deriv_arr_size-1]);
 
-                     
+
             while (fgets(buffer, sizeof(buffer), files[file_number]) != NULL)
             {
 
@@ -279,7 +282,7 @@ void gauss_newton(double* parameters, int star_number, int* conditions)
             // Взвешенная сумма квадратов невязок
             sum += pow(r_i[0], 2) / pow(ra_err, 2);
             sum += pow(r_i[1], 2) / pow(dec_err, 2);
-
+            /*
             tmp = 0;
 
             // Производные (Кроме производной по массе)
@@ -289,12 +292,11 @@ void gauss_newton(double* parameters, int star_number, int* conditions)
                 {
                     // Центральные разности
                     // По ra
-                    deriv[tmp*2] = 
+                    deriv[tmp*2] =
                     c/d*(deriv_state[tmp*2][1] - deriv_state[tmp*2+1][1])/(2*std::abs(cur_val[tmp+size*file_number]/EPS));
                     // по dec
-                    deriv[tmp*2+1]= 
+                    deriv[tmp*2+1]=
                     c/d*(deriv_state[tmp*2][0] - deriv_state[tmp*2+1][0])/(2*std::abs(cur_val[tmp+size*file_number]/EPS));
-
                     // Производные по z и v_z не нужно маштабировать
                     if (j==2 && j==5 && false)
                     {
@@ -306,10 +308,41 @@ void gauss_newton(double* parameters, int star_number, int* conditions)
             }
 
             //Производные по массе
-            deriv[deriv_arr_size-2] = 
+            deriv[deriv_arr_size-2] =
             c/d*(deriv_state[deriv_arr_size-2][1] - deriv_state[deriv_arr_size-1][1])/(2*std::abs(cur_val[full_size-1]/EPS));
-            deriv[deriv_arr_size-1] = 
+            deriv[deriv_arr_size-1] =
             c/d*(deriv_state[deriv_arr_size-2][0] - deriv_state[deriv_arr_size-1][0])/(2*std::abs(cur_val[full_size-1]/EPS));
+            */
+            if (true) {
+                init_star(deriv_in, file_number);
+                int tmp2 = 0;
+                for(int j=0; j<6; j++)
+                {
+                    if (conditions[j] == 1)
+                    {
+                        deriv_in[j] = cur_val[tmp2 + size*file_number];
+                        tmp2++;
+                    }
+                }
+                deriv_in[6] = cur_val[full_size - 1];
+
+                full_analytic(deriv_a, deriv_in, t);
+                tmp2 = 0;
+                // Аналитические производные
+                for(int j=0; j<6; j++)
+                {
+                    if (conditions[j] == 1)
+                    {
+
+                        printf("j = %d. \n RA: %.4e | %.4e \n DEC: %.4e | %.4e\n\n", j, deriv[tmp*2], deriv_a[j*2], deriv[tmp*2+1], deriv_a[j*2+1]);
+                        deriv[tmp*2]   = deriv_a[j*2];
+                        deriv[tmp*2+1] = deriv_a[j*2+1];
+                        tmp2++;
+                    }
+                }
+                deriv[deriv_arr_size-2] = deriv_a[12];
+                deriv[deriv_arr_size-1] = deriv_a[13];
+            }
 
             // Техническая переменная для заполнения AtWr
             // Работает как второй счетчик цикла, который срабатывает
@@ -321,16 +354,16 @@ void gauss_newton(double* parameters, int star_number, int* conditions)
             {
                 if (conditions[j] == 1)
                 {
-                    AtWr[size*file_number+tmp] += 
+                    AtWr[size*file_number+tmp] +=
                     (1.0/pow(ra_err, 2))*r_i[0]*deriv[tmp*2] + (1.0/pow(dec_err, 2))*r_i[1]*deriv[tmp*2+1];
                     tmp++;
                 }
-                
+
             }
 
-            AtWr[full_size-1] += 
+            AtWr[full_size-1] +=
             (1.0/pow(ra_err, 2))*r_i[0]*deriv[deriv_arr_size-2] + (1.0/pow(dec_err, 2))*r_i[1]*deriv[deriv_arr_size-1];
-            
+
 
             // Заполнение AtWA
 
@@ -355,7 +388,7 @@ void gauss_newton(double* parameters, int star_number, int* conditions)
                         if (conditions[k] == 1)
                         {
                             // Первая строка добавка по ra, вторая по dec
-                            AtWA[t1 + size*file_number][t2 + size*file_number] += 
+                            AtWA[t1 + size*file_number][t2 + size*file_number] +=
                             (1.0/pow(ra_err, 2)) * deriv[t1*2] * deriv[t2*2] +
                             (1.0/pow(dec_err, 2)) * deriv[t1*2+1] * deriv[t2*2+1];
                             t2++;
@@ -363,7 +396,7 @@ void gauss_newton(double* parameters, int star_number, int* conditions)
                     }
 
                     // Заполнение правого столбца
-                    AtWA[t1 + size*file_number][full_size-1] += 
+                    AtWA[t1 + size*file_number][full_size-1] +=
                     (1.0/pow(ra_err, 2)) * deriv[deriv_arr_size-2] * deriv[t1*2] +
                     (1.0/pow(dec_err, 2)) * deriv[deriv_arr_size-1] * deriv[t1*2+1];
 
@@ -375,7 +408,7 @@ void gauss_newton(double* parameters, int star_number, int* conditions)
             }
 
             // Заполнение правого нижнего угла
-            AtWA[full_size-1][full_size-1] += 
+            AtWA[full_size-1][full_size-1] +=
             1.0/pow(ra_err, 2) * deriv[deriv_arr_size-2] * deriv[deriv_arr_size-2] +
             1.0/pow(dec_err, 2) * deriv[deriv_arr_size-1] * deriv[deriv_arr_size-1];
 
@@ -395,6 +428,8 @@ void gauss_newton(double* parameters, int star_number, int* conditions)
             }
         }
 
+
+
         // Заполнение значений предобуславливателя (масса)
 
         Preconditioner[full_size-1] = 1./sqrt(AtWA[full_size-1][full_size-1]);
@@ -408,7 +443,7 @@ void gauss_newton(double* parameters, int star_number, int* conditions)
                 AtWA[i][j] *= Preconditioner[i]*Preconditioner[j];
         }
 
-        
+
 
         std::cout << "------------ITERATION " << i << " -----------------" << std::endl;
         std::cout << std::endl;
@@ -420,16 +455,16 @@ void gauss_newton(double* parameters, int star_number, int* conditions)
             return;
 
         for(int j=0; j<full_size; j++)
-            printf("%.2e ", cur_val[j]);
+            printf("%.8e ", cur_val[j]);
         std::cout << std::endl;
 
-        
-        
+
+
         std::cout << std::endl;
         std::cout << std::endl;
 
         for(int j=0; j<full_size; j++)
-            printf("%.2e ", AtWr[j]);
+            printf("%.4e ", AtWr[j]);
         std::cout << std::endl;
 
         std::cout << std::endl;
@@ -438,7 +473,7 @@ void gauss_newton(double* parameters, int star_number, int* conditions)
         for(int j=0; j<full_size; j++)
         {
             for(int k=0; k< full_size; k++)
-                printf("%.2e ", AtWA[j][k]);
+                printf("%.4e ", AtWA[j][k]);
             std::cout << std::endl;
         }
 
@@ -447,9 +482,19 @@ void gauss_newton(double* parameters, int star_number, int* conditions)
 
         double w[full_size];
 
+
+        for(int j=0; j<full_size; j++)
+        {
+            if (j == full_size - 2 || true){
+               //AtWA[j][j] *= 2.1;
+            }
+        }
+
         solve_eq(AtWA, AtWr, full_size, w);
 
-        for(int j=0; j<full_size; j++) cur_val[j] = cur_val[j] -Preconditioner[j]*w[j];
+
+
+        for(int j=0; j<full_size; j++) cur_val[j] = cur_val[j] - Preconditioner[j]*w[j];
 
     }
 
@@ -466,5 +511,5 @@ void gauss_newton(double* parameters, int star_number, int* conditions)
     fclose(files[0]);
     fclose(files[1]);
     fclose(files[2]);
-
+    free(deriv_a);
 }
