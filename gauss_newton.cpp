@@ -259,7 +259,7 @@ void gauss_newton(double* parameters, int star_number, int* conditions)
             // Численное интегирование:
             // Вектор системы
             wrap_integration(x, (t-previous_t)*365.*86400., cur_val[full_size-1], rk_4);
-
+            /*
             // Векторы дополнительных орбит для производных
             for (int j=0; j< deriv_arr_size-2; j++)
                 wrap_integration(deriv_state[j], (t-previous_t)*365.*86400., cur_val[full_size-1], rk_4);
@@ -267,7 +267,7 @@ void gauss_newton(double* parameters, int star_number, int* conditions)
             // Интегрирование векторов производных по массе (требует eps в wrap_integration)
             wrap_integration(deriv_state[deriv_arr_size-2], (t-previous_t)*365.*86400., cur_val[full_size-1]+(cur_val[full_size-1]/EPS), rk_4);
             wrap_integration(deriv_state[deriv_arr_size-1], (t-previous_t)*365.*86400., cur_val[full_size-1]-(cur_val[full_size-1]/EPS), rk_4);
-
+            */
             // Массив производных
             double deriv[deriv_arr_size];
 
