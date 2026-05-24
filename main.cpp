@@ -13,7 +13,7 @@ int main()
 {
 
     double three_stars[19];
-    double delta = 1.00;
+    double delta = 1.01;
     // Хард код, параметры s2 на первом наблюдении
     three_stars[0] = 0.126;  // a
     three_stars[1] = 0.884;  // e
