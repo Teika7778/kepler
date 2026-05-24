@@ -260,7 +260,7 @@ void gauss_newton(double* parameters, int star_number, int* conditions)
             // Численное интегирование:
             // Вектор системы
             wrap_integration(x, (t-previous_t)*365.*86400., cur_val[full_size-1], rk_4);
-            /*
+
             // Векторы дополнительных орбит для производных
             for (int j=0; j< deriv_arr_size-2; j++)
                 wrap_integration(deriv_state[j], (t-previous_t)*365.*86400., cur_val[full_size-1], rk_4);
@@ -268,31 +268,12 @@ void gauss_newton(double* parameters, int star_number, int* conditions)
             // Интегрирование векторов производных по массе (требует eps в wrap_integration)
             wrap_integration(deriv_state[deriv_arr_size-2], (t-previous_t)*365.*86400., cur_val[full_size-1]+(cur_val[full_size-1]/EPS), rk_4);
             wrap_integration(deriv_state[deriv_arr_size-1], (t-previous_t)*365.*86400., cur_val[full_size-1]-(cur_val[full_size-1]/EPS), rk_4);
-            */
+            
             // Массив производных
             double deriv[deriv_arr_size];
 
             // Массив производных невязок vz по параметрам
-            double deriv_vz[deriv_arr_size];
-
-            // Авто-производные по декартовым элементам (отключены)
-            /*
-            for (int j=0; j<6; j++)
-            {
-                deriv[j*2] = x[12 + 6*1 + j];
-                deriv[j*2+1] = x[12 + 6*0 + j];
-
-                // Маштабирем наблюдаемые величины
-                if (j == 0 or j == 1)
-                {
-                    deriv[j*2] *= c/d;
-                    deriv[j*2+1] *= c/d;
-                }
-            }
-
-            deriv[12] = c/d * x[7];
-            deriv[13] = c/d * x[6];
-            */
+            double deriv_vz[size+1];
 
             // Вычисление невязки и проивзодных
 
@@ -330,35 +311,15 @@ void gauss_newton(double* parameters, int star_number, int* conditions)
             {
                 if (conditions[j] == 1)
                 {
-                    // Центральные разности
-                    // По ra
-                    deriv[tmp*2] =
-                    c/d*(deriv_state[tmp*2][1] - deriv_state[tmp*2+1][1])/(2*std::abs(cur_val[tmp+size*file_ra_dec]/EPS));
-                    // по dec
-                    deriv[tmp*2+1]=
-                    c/d*(deriv_state[tmp*2][0] - deriv_state[tmp*2+1][0])/(2*std::abs(cur_val[tmp+size*file_ra_dec]/EPS));
-                    // Производные по z и v_z не нужно маштабировать
-                    if (j==2 && j==5 && false)
-                    {
-                        deriv[tmp*2] /= (c/d);
-                        deriv[tmp*2+1] /= (c/d);
-                    }
-
-                    // Расчет производной, вопрос с маштабированием открыт
-                    deriv_vz[tmp] =
+                    // Расчет производной
+                    deriv_vz[tmp] = 
                     (deriv_state[tmp*2][5] - deriv_state[tmp*2+1][5])/(2*std::abs(cur_val[tmp+size*file_ra_dec]/EPS));
                     tmp++;
                 }
             }
 
-            //Производные по массе
-            deriv[deriv_arr_size-2] =
-            c/d*(deriv_state[deriv_arr_size-2][1] - deriv_state[deriv_arr_size-1][1])/(2*std::abs(cur_val[full_size-1]/EPS));
-            deriv[deriv_arr_size-1] =
-            c/d*(deriv_state[deriv_arr_size-2][0] - deriv_state[deriv_arr_size-1][0])/(2*std::abs(cur_val[full_size-1]/EPS));
-
-            // Производные по v_z
-            deriv_vz[deriv_arr_size-1] =
+            // Производные v_z по массе
+            deriv_vz[size] =
             (deriv_state[deriv_arr_size-2][5] - deriv_state[deriv_arr_size-1][5])/(2*std::abs(cur_val[full_size-1]/EPS));
 
 
@@ -411,6 +372,9 @@ void gauss_newton(double* parameters, int star_number, int* conditions)
             // Только на тех значениях где conditions[j] == 1
             tmp = 0;
 
+            for (int j=0; j<size+1; j++)
+                deriv_vz[j] = 0;
+
             // Заполнение AtWr(betha)
             for(int j=0; j<6; j++)
             {
@@ -428,7 +392,7 @@ void gauss_newton(double* parameters, int star_number, int* conditions)
             }
 
             if (file_number>2)
-                AtWr[full_size-1] += (1.0/pow(v_z_err, 2))*r_i[0]*deriv_vz[deriv_arr_size-1];
+                AtWr[full_size-1] += (1.0/pow(v_z_err, 2))*r_i[0]*deriv_vz[size];
             else
                 AtWr[full_size-1] +=
             (1.0/pow(ra_err, 2))*r_i[0]*deriv[deriv_arr_size-2] + (1.0/pow(dec_err, 2))*r_i[1]*deriv[deriv_arr_size-1];
@@ -470,7 +434,7 @@ void gauss_newton(double* parameters, int star_number, int* conditions)
                     // Заполнение правого столбца
                     if (file_number>2)
                         AtWA[t1 + size*file_ra_dec][full_size-1] +=
-                    (1.0/pow(v_z_err, 2)) * deriv_vz[deriv_arr_size-1] * deriv_vz[t1];
+                    (1.0/pow(v_z_err, 2)) * deriv_vz[size] * deriv_vz[t1];
                     else
                         AtWA[t1 + size*file_ra_dec][full_size-1] +=
                     (1.0/pow(ra_err, 2)) * deriv[deriv_arr_size-2] * deriv[t1*2] +
@@ -486,7 +450,7 @@ void gauss_newton(double* parameters, int star_number, int* conditions)
             // Заполнение правого нижнего угла
             if (file_number>2)
                 AtWA[full_size-1][full_size-1] +=
-            1.0/pow(v_z_err, 2) * deriv_vz[deriv_arr_size-1] * deriv_vz[deriv_arr_size-1];
+            1.0/pow(v_z_err, 2) * deriv_vz[size] * deriv_vz[size];
             else
                 AtWA[full_size-1][full_size-1] +=
             1.0/pow(ra_err, 2) * deriv[deriv_arr_size-2] * deriv[deriv_arr_size-2] +
@@ -507,8 +471,6 @@ void gauss_newton(double* parameters, int star_number, int* conditions)
                 }
             }
         }
-
-
 
         // Заполнение значений предобуславливателя (масса)
 
