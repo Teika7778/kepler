@@ -82,7 +82,7 @@ void count_diff(double dt, kepler_orbit_denorm denorm, double m, double* ra, dou
 
 }
 
-void full_analytic(double* deriv_vec, double* params, double t) {
+void full_analytic(double* deriv_vec, double* params, double t, double* z_deriv) {
     // printf("t = %.4e\n", t);
     t *= 365.25 * 86400.0;
     double d = (double) R_BH_LY * (double) LIGHT_YEAR;
@@ -168,6 +168,29 @@ void full_analytic(double* deriv_vec, double* params, double t) {
     double drx_dTp = drc_dTp * cos(v) - rc * sin(v) * dv_dTp;
     double dry_dTp = drc_dTp * sin(v) + rc * cos(v) * dv_dTp;
 
+    double vx = - sin(E) * sqrt(na * grav) / rc;
+    double vy = sqrt(1 - e*e) * cos(E) * sqrt(na * grav) / rc;
+
+    double dvx_de = sqrt(na * grav) * ( (sin(E) * drc_de) / pow(rc,2) - (dE_de * cos(E)) / rc);
+    double dvy_de = (sqrt(grav * na) * (rc * ((e*e-1) * dE_de * sin(E) - e * cos(E)) + (e*e - 1) * cos(E) * drc_de ) )
+    / (sqrt(1 - e*e) * pow(rc, 2));
+
+    double dvx_da = - (grav * (2 * na * (rc * dE_da * cos(E) - sin(E) * drc_da ) + rc * sin(E) * dna_da)) / (2 * rc * rc * sqrt(na * grav));
+    double dvy_da = sqrt(1 - e*e) * sqrt(grav * na) * (cos(E) * dna_da / (2 * na * rc) - dE_da * sin(E) / rc - cos(E) * drc_da / pow(rc, 2));
+
+    double dvx_dm = sqrt(na * grav) * ( (sin(E) * drc_dm)/ pow(rc, 2) - (dE_dm * cos(E)) / (rc) - (sin(E) * dgrav_dm) / (2 * grav * rc));
+
+    /*double dvy_dm = (sqrt(1 - e*e) * na * sin(E) * grav * dE_dm) / (sqrt(na * grav) * rc)
+    + sqrt(1 - e*e) * na * cos(E) / sqrt(na * grav) *
+    ((dgrav_dm) / (2 * rc) - (grav * drc_dm) / (pow(rc, 2)));*/
+
+    double dvy_dm = -(sqrt(1 - e*e) * na * sin(E) * grav * dE_dm) / (sqrt(na * grav) * rc)
+    + sqrt(1 - e*e) * na * cos(E) / sqrt(na * grav) *
+    ((dgrav_dm) / (2 * rc) - (grav * drc_dm) / (pow(rc, 2)));
+
+    double dvx_dTp = sqrt(na * grav) * ( (sin(E) * drc_dTp) / pow(rc,2) - (dE_dTp * cos(E)) / rc);
+    /*double dvy_dTp = sqrt(1 - e*e) * sqrt(na * grav) * ( (sin(E) * dE_dTp) / rc - (drc_dTp * cos(E)) / pow(rc,2));*/
+    double dvy_dTp = sqrt(1 - e*e) * sqrt(na * grav) * ( -(sin(E) * dE_dTp) / rc - (drc_dTp * cos(E)) / pow(rc,2));
 
     double rrx = rx * (cos(wrad) * cos(Orad) - sin(wrad) * cos(irad) * sin(Orad))
                - ry * (sin(wrad) * cos(Orad) + cos(wrad) * cos(irad) * sin(Orad));
@@ -226,6 +249,17 @@ void full_analytic(double* deriv_vec, double* params, double t) {
     double drry_di = rx * (-1 * sin(wrad) * sin(irad) * dangle * cos(Orad))
                    + ry * (-1 * cos(wrad) * sin(irad) * dangle * cos(Orad));
 
+    double vvz = vx * (sin(wrad) * sin(irad)) + vy * (cos(wrad) * sin(irad));
+
+    double dvvz_dw = vx * (cos(wrad) * dangle * sin(irad)) - vy * (sin(wrad) * dangle * sin(irad));
+    double dvvz_dO = 0;
+    double dvvz_di = vx * (sin(wrad) * cos(irad) * dangle) + vy * (cos(wrad) * cos(irad) * dangle);
+
+    double dvvz_de  = dvx_de * (sin(wrad) * sin(irad)) + dvy_de * (cos(wrad) * sin(irad)) ;
+    double dvvz_da  = dvx_da * (sin(wrad) * sin(irad)) + dvy_da * (cos(wrad) * sin(irad)) ;
+    double dvvz_dm  = dvx_dm * (sin(wrad) * sin(irad)) + dvy_dm * (cos(wrad) * sin(irad)) ;
+    double dvvz_dTp = dvx_dTp * (sin(wrad) * sin(irad)) + dvy_dTp * (cos(wrad) * sin(irad)) ;
+
     double DEC = c/d * rrx;
     double RA = c/d * rry;
 
@@ -252,6 +286,14 @@ void full_analytic(double* deriv_vec, double* params, double t) {
     three_stars[4] = 136.78;  // i
     three_stars[5] = 2002.32; // T0
     */
+    z_deriv[0] = dvvz_da;
+    z_deriv[1] = dvvz_de;
+    z_deriv[2] = dvvz_dw;
+    z_deriv[3] = dvvz_dO;
+    z_deriv[4] = dvvz_di;
+    z_deriv[5] = dvvz_dTp;
+    z_deriv[6] = dvvz_dm;
+
     deriv_vec[0] = dRA_da;
     deriv_vec[1] = dDEC_da;
     deriv_vec[2] = dRA_de;
