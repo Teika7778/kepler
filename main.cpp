@@ -13,30 +13,29 @@ int main()
 {
 
     double three_stars[19];
-    double delta = 1.00;
+
     // Хард код, параметры s2 на первом наблюдении
     three_stars[0] = 0.126;  // a
     three_stars[1] = 0.884;  // e
-    three_stars[2] = 71.36 * delta;   // w
-
-    three_stars[3] = 234.50 * delta;  // omega
-    three_stars[4] = 136.78 * delta;  // i
+    three_stars[2] = 71.36;   // w
+    three_stars[3] = 234.50;  // omega
+    three_stars[4] = 136.78;  // i
     three_stars[5] = 2002.32; // T0
 
     // Хард код, параметры s38 на первом наблюдении
     three_stars[6] = 0.140;  // a
     three_stars[7] = 0.818;  // e
-    three_stars[8] = 18.4 * delta;   // w
-    three_stars[9] = 101.8 * delta;  // omega
-    three_stars[10] = 166.22 * delta;  // i
+    three_stars[8] = 18.4;   // w
+    three_stars[9] = 101.8;  // omega
+    three_stars[10] = 166.22;  // i
     three_stars[11] = 2003.30; // T0
 
     // Хард код, параметры s55 на первом наблюдении
     three_stars[12] = 0.109;  // a
     three_stars[13] = 0.74;  // e
-    three_stars[14] = 133.5 * delta;   // w
-    three_stars[15] = 129.9 * delta;  // omega
-    three_stars[16] = 141.7 * delta;  // i
+    three_stars[14] = 133.5;   // w
+    three_stars[15] = 129.9;  // omega
+    three_stars[16] = 141.7;  // i
     three_stars[17] = 2009.31; // T0
     three_stars[18] = 8e36;
 

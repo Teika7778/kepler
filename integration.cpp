@@ -174,7 +174,7 @@ void rk4Free(rk4* rk)
 void wrap_integration(double* x, double t, double M_bh, rk4 rk_4)
 {
 
-    double dt = 86400;   // Шаг - день
+    double dt = 86400 / 2;   // Шаг - день
 
     if (t<0){
         dt *= -1;
@@ -184,10 +184,18 @@ void wrap_integration(double* x, double t, double M_bh, rk4 rk_4)
 
     double local_time = 0;
 
-    while (std::abs(local_time) <= std::abs(t))
+    // Пока разница между нужным временем и текущим больше миллисекунды
+    while (std::abs(t - local_time) > 1e-3)
     {
-        ode(&rk_4, x, STATE_SIZE_STAR_FULL, local_time, local_time+dt, dxdt, &data);
-        local_time += dt;  // Увеличиваем время симуляции
+        double current_step = dt;
+        
+        // Если до цели осталось меньше стандартного шага, шагаем ровно в цель
+        if (std::abs(t - local_time) < std::abs(dt)) {
+            current_step = t - local_time;
+        }
+        
+        ode(&rk_4, x, STATE_SIZE_STAR_FULL, local_time, local_time + current_step, dxdt, &data);
+        local_time += current_step;
     }
 
 }
