@@ -306,22 +306,16 @@ void gauss_newton(double* parameters, int star_number, int* conditions)
                     // по dec
                     deriv[tmp*2+1]=
                     c/d*(deriv_state[tmp*2][0] - deriv_state[tmp*2+1][0])/(2*std::abs(cur_val[tmp+size*file_ra_dec]/EPS));
-                    // Производные по z и v_z не нужно маштабировать
-                    if (j==2 && j==5 && false)
-                    {
-                        deriv[tmp*2] /= (c/d);
-                        deriv[tmp*2+1] /= (c/d);
-                    }
-                    // Расчет производной
+                    // Расчет производной vz
                     deriv_vz[tmp] = 
-                    1000*(deriv_state[tmp*2][5] - deriv_state[tmp*2+1][5])/(2*std::abs(cur_val[tmp+size*file_ra_dec]/EPS));
+                    ( (deriv_state[tmp*2][5] - deriv_state[tmp*2+1][5]) / 1000)/(2*std::abs(cur_val[tmp+size*file_ra_dec]/EPS));
                     tmp++;
                 }
             }
 
             // Производные v_z по массе
             deriv_vz[size] =
-            1000*(deriv_state[deriv_arr_size-2][5] - deriv_state[deriv_arr_size-1][5])/(2*std::abs(cur_val[full_size-1]/EPS));
+            ( (deriv_state[deriv_arr_size-2][5] - deriv_state[deriv_arr_size-1][5]) / 1000)/(2*std::abs(cur_val[full_size-1]/EPS));
 
             //Производные по массе
             deriv[deriv_arr_size-2] =
@@ -366,11 +360,11 @@ void gauss_newton(double* parameters, int star_number, int* conditions)
                 {
                     if (conditions[j] == 1)
                     {
-                        deriv_vz[tmp2] =  1000*deriv_za[j];
+                        deriv_vz[tmp2] =  deriv_za[j] / 1000;
                         tmp2++;
                     }
                 }
-                deriv_vz[deriv_arr_size/2-1] = 1000*deriv_za[6];
+                deriv_vz[deriv_arr_size/2-1] = deriv_za[6] / 1000;
 
             }
 
@@ -381,7 +375,7 @@ void gauss_newton(double* parameters, int star_number, int* conditions)
 
             // Отключение радиальных скоростей
 
-            if (file_number >3)
+            if (file_number >5)
             {
                 for(int j=0;j<size+1; j++)
                     deriv_vz[j] = 0;
@@ -523,8 +517,8 @@ void gauss_newton(double* parameters, int star_number, int* conditions)
         //    printf("%.4e ", AtWr[j]);
         //std::cout << std::endl;
 
-        std::cout << std::endl;
-        std::cout << std::endl;
+        //std::cout << std::endl;
+        //std::cout << std::endl;
 
         //for(int j=0; j<full_size; j++)
         //{
@@ -541,8 +535,9 @@ void gauss_newton(double* parameters, int star_number, int* conditions)
         solve_eq(AtWA, AtWr, full_size, w);
 
 
+        double alpha = 0.2;
 
-        for(int j=0; j<full_size; j++) cur_val[j] = cur_val[j] - Preconditioner[j]*w[j];
+        for(int j=0; j<full_size; j++) cur_val[j] = cur_val[j] - alpha* Preconditioner[j]*w[j];
 
     }
 
