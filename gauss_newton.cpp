@@ -324,9 +324,9 @@ void gauss_newton(double* parameters, int star_number, int* conditions, int GN_n
         // --- ЗАПИСЬ В ЛОГ ФАЙЛ ---
 
         if (i == 1)
-            std::cout << "Сумма невязок на первой итерации: " << sum << std::endl;
+            std::cout << "Erorr sum on first iteration: " << sum << std::endl;
         if (i == GN_num_iter - 1)
-            std::cout << "Сумма невязок на итерации " << i << ": " << sum << std::endl;
+            std::cout << "Erorr sum on iteration " << i << ": " << sum << std::endl;
         
         fprintf(log, "------------ITERATION %d -----------------\n\n", i);
         fprintf(log, "ERROR SUM: %g\n\n", sum);

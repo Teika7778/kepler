@@ -16,7 +16,7 @@ int main()
     // Открываем файл с входными данными
     std::ifstream input_file("user_files/input.txt");
     if (!input_file.is_open()) {
-        std::cerr << "Ошибка: Не удалось открыть файл input.txt!" << std::endl;
+        std::cerr << "Error: cant open file input.txt!" << std::endl;
         return 1;
     }
 
@@ -62,7 +62,7 @@ int main()
     }
         
 
-    std::cout << "Данные успешно загружены" << std::endl;
+    std::cout << "Data loaded" << std::endl;
     
     input_file.close();
 
@@ -90,9 +90,9 @@ int main()
         res_file << parameters[full_size - 1] << std::endl;
         
         res_file.close();
-        std::cout << "Результаты успешно записаны в result.txt" << std::endl;
+        std::cout << "Result is written to result.txt" << std::endl;
     } else {
-        std::cerr << "Ошибка: Не удалось создать файл result.txt" << std::endl;
+        std::cerr << "Erorr: cant open file result.txt" << std::endl;
     }
 
     return 0;
