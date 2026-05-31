@@ -23,3 +23,5 @@ void wrap_integration(double* x, double t, double M_bh, rk4 rk_4);
 
 
 void star_state_to_dec(double* x, double M_bh, double t0);
+
+void init_deriv(double* x);

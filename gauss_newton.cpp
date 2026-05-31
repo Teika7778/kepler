@@ -108,7 +108,7 @@ void gauss_newton(double* parameters, int star_number, int* conditions, int GN_n
     while(++i != GN_num_iter)
     {
 
-        eps = current_value / 1e8;
+        double sum = 0;
 
         char buffer[256]; // Буфер для хранения строки
 
