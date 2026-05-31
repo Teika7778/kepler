@@ -13,6 +13,11 @@
 
 #include "gauss_newton.hpp"
 
+// Количество параметров для одной звезды
+#define SIZE 6
+// Общее количество параметров
+#define FULL_SIZE 19
+
 
 void find_inverse(double** A, double** res, int size)
 {
@@ -34,53 +39,8 @@ void find_inverse(double** A, double** res, int size)
     }
 }
 
-void init_star(double* x, int star_number)
+void gauss_newton(double* parameters, int star_number, int* conditions, int GN_num_iter, double alpha)
 {
-    switch (star_number)
-    {
-    case 0:
-        x[0] = 0.126;  // a
-        x[1] = 0.884;  // e
-        x[2] = 71.36;   // w
-        x[3] = 234.50;  // omega
-        x[4] = 136.78;  // i
-        x[5] = 2002.32; // T0
-        break;
-    case 1:
-        x[0] = 0.140;  // a
-        x[1] = 0.818;  // e
-        x[2] = 18.4;   // w
-        x[3] = 101.8;  // omega
-        x[4] = 166.22;  // i
-        x[5] = 2003.30; // T0
-        break;
-    case 2:
-        x[0] = 0.109;  // a
-        x[1] = 0.74;  // e
-        x[2] = 133.5;   // w
-        x[3] = 129.9;  // omega
-        x[4] = 141.7;  // i
-        x[5] = 2009.31; // T0
-        break;
-
-    default:
-        x[0] = 0;
-        x[1] = 0;
-        x[2] = 0;
-        x[3] = 0;
-        x[4] = 0;
-        x[5] = 0;
-        break;
-    }
-}
-
-
-void gauss_newton(double* parameters, int star_number, int* conditions)
-{
-    // Все возможнные производные (потом будут перенесены только нужные)
-    double* deriv_a = (double*) malloc(sizeof(double) * 14);
-    double* deriv_za = (double*) malloc(sizeof(double) * 7);
-    double* deriv_in = (double*) malloc(sizeof(double) * 7);
     // Счетчик цикла Ньютона
     int i = 0;
 
@@ -93,6 +53,7 @@ void gauss_newton(double* parameters, int star_number, int* conditions)
     files[4] = fopen("data/s38_velocity.txt", "r");
     files[5] = fopen("data/s55_velocity.txt", "r");
 
+    FILE* log = fopen("log.txt", "w");
 
     // Переменные для перевода метров в ra. и dec.
     double d = (double) R_BH_LY * (double) LIGHT_YEAR;
@@ -122,36 +83,29 @@ void gauss_newton(double* parameters, int star_number, int* conditions)
     // Стуктура для метода Рунге-Кутты 4
     rk4 rk_4 = {NULL, NULL, NULL, NULL, NULL};
 
-
-    // Определяем размер в зависимости от количества параметров
-    int size = 0;
-    for(int j=0; j<6; j++)
-        if (conditions[j] == 1) size += 1;
-
-    int full_size = star_number*size + 1;
-
-    // кол-во орбит для центральных разностей
-    int deriv_arr_size = (size + 1) * 2;
-
     // Значение малого возмущения
     double EPS = 1e8;
 
-    // Массив векторов состояний численных производных
-    double* deriv_state[deriv_arr_size];
-    for (int j=0; j<deriv_arr_size; j++)
-        deriv_state[j] = (double*)malloc(sizeof(double)*STATE_SIZE_STAR_FULL);
-
     // Матрица AtWA
-    double** AtWA = (double**)malloc(sizeof(double*)*full_size);
-    for (int j=0; j<full_size; j++) AtWA[j] = (double*)malloc(sizeof(double)*full_size);
+    double** AtWA = (double**)malloc(sizeof(double*)*FULL_SIZE);
+    for (int j=0; j<FULL_SIZE; j++) AtWA[j] = (double*)malloc(sizeof(double)*FULL_SIZE);
 
     // Вектор AtWr(betha)
-    double AtWr[full_size];
+    double AtWr[FULL_SIZE];
 
     // Предобуславливатель Якоби
-    double Preconditioner[full_size];
+    double Preconditioner[FULL_SIZE];
 
-    while(++i != MAX_ITER_GAUSS_NEWTON)
+    // Копия кеплерова вектора системы для производных
+    double* x_cep_copy = (double*) malloc(sizeof(double) * SIZE);
+
+    // Массив производных
+    double deriv[(SIZE+1) * 2];
+
+    // Массив производных невязок vz по параметрам
+    double deriv_vz[SIZE+1];
+
+    while(++i != GN_num_iter)
     {
 
         double sum = 0;
@@ -159,10 +113,10 @@ void gauss_newton(double* parameters, int star_number, int* conditions)
         char buffer[256]; // Буфер для хранения строки
 
         // Заполнение нулями AtWA и AtWr(betha)
-        for (int m=0; m<full_size; m++)
+        for (int m=0; m<FULL_SIZE; m++)
         {
             AtWr[m] = 0;
-            for (int k=0; k<full_size; k++) AtWA[m][k] = 0;
+            for (int k=0; k<FULL_SIZE; k++) AtWA[m][k] = 0;
         }
 
         // Цикл по звездвм
@@ -181,58 +135,15 @@ void gauss_newton(double* parameters, int star_number, int* conditions)
             if (file_ra_dec == 1) previous_t = 2004.511;
             if (file_ra_dec == 2) previous_t = 2004.511;
 
-            init_star(x, file_ra_dec);
-
-            int tmp = 0;
-
             // Инициализация вектора системы текущими значениями параметров
             for(int j=0; j<6; j++)
-            {
-                if (conditions[j] == 1)
-                {
-                    x[j] = cur_val[tmp + size*file_ra_dec];
-                    tmp++;
-                }
-            }
-
-            // Копируем вектор состояния в векотры производных
-            for(int j=0; j<deriv_arr_size; j++)
-                memcpy(deriv_state[j], x, sizeof(double)*STATE_SIZE_STAR_FULL);
-
-            tmp = 0;
-            // Добавляем и вычитаем eps (кроме производных по массе)
-            for(int j=0; j<6; j++)
-            {
-                if (conditions[j] == 1)
-                {
-                    deriv_state[tmp*2][j] += std::abs(cur_val[tmp+size*file_ra_dec] / EPS);
-                    deriv_state[tmp*2+1][j] -= std::abs(cur_val[tmp+size*file_ra_dec] / EPS);
-                    tmp++;
-                }
-            }
+                    x[j] = cur_val[j + SIZE*file_ra_dec];
 
             // Перевод из кеплеровых координат в декартовы
-            init_star_state(x, cur_val[full_size-1], previous_t);
+            star_state_to_dec(x, cur_val[FULL_SIZE-1], previous_t);
 
-            // Инициализация авто производных
+            // Инициализация авто производных (не используются)
             init_deriv(x);
-
-            // Без массы
-            for(int j=0; j< deriv_arr_size-2; j++)
-            {
-                init_star_state(deriv_state[j], cur_val[full_size-1], previous_t);
-                init_deriv(deriv_state[j]);
-            }
-
-
-            // С массой
-
-            init_star_state(deriv_state[deriv_arr_size-2], cur_val[full_size-1]+(cur_val[full_size-1]/EPS), previous_t);
-            init_deriv(deriv_state[deriv_arr_size-2]);
-
-            init_star_state(deriv_state[deriv_arr_size-1], cur_val[full_size-1]-(cur_val[full_size-1]/EPS), previous_t);
-            init_deriv(deriv_state[deriv_arr_size-1]);
-
 
             while (fgets(buffer, sizeof(buffer), files[file_number]) != NULL)
             {
@@ -252,21 +163,7 @@ void gauss_newton(double* parameters, int star_number, int* conditions)
 
             // Численное интегирование:
             // Вектор системы
-            wrap_integration(x, (t-previous_t)*365.25*86400., cur_val[full_size-1], rk_4);
-
-            // Векторы дополнительных орбит для производных
-            for (int j=0; j< deriv_arr_size-2; j++)
-                wrap_integration(deriv_state[j], (t-previous_t)*365.25*86400., cur_val[full_size-1], rk_4);
-
-            // Интегрирование векторов производных по массе (требует eps в wrap_integration)
-            wrap_integration(deriv_state[deriv_arr_size-2], (t-previous_t)*365.25*86400., cur_val[full_size-1]+(cur_val[full_size-1]/EPS), rk_4);
-            wrap_integration(deriv_state[deriv_arr_size-1], (t-previous_t)*365.25*86400., cur_val[full_size-1]-(cur_val[full_size-1]/EPS), rk_4);
-            
-            // Массив производных
-            double deriv[deriv_arr_size];
-
-            // Массив производных невязок vz по параметрам
-            double deriv_vz[size+1];
+            wrap_integration(x, (t-previous_t)*365.25*86400., cur_val[FULL_SIZE-1], rk_4);
 
             // Вычисление невязки и проивзодных
 
@@ -294,114 +191,50 @@ void gauss_newton(double* parameters, int star_number, int* conditions)
                 sum += pow(r_i[1], 2) / pow(dec_err, 2);
             }
 
-            tmp = 0;
+            // Аналитические производные
 
-            // Производные (Кроме производной по массе)
-            for(int j=0; j<6; j++)
+            // Копируем текущие значения кеп. элемент
+            for(int j=0; j<SIZE; j++)
+                    x_cep_copy[j] = cur_val[j + SIZE*file_ra_dec];
+
+            // Аналитические производные
+            full_analytic(deriv, deriv_vz, x_cep_copy, cur_val[FULL_SIZE-1], t);
+            
+
+            // Маштабирование производных
+            for(int j=0; j<SIZE; j++)
+                    deriv_vz[j] /=  1000;
+            deriv_vz[SIZE] /=  1000;
+
+            // Отключение производных по параметрам, которые не определяются
+
+            for (int j=0; j<SIZE; j++)
             {
-                if (conditions[j] == 1)
+                if (conditions[j] == 0)
                 {
-                    deriv[tmp*2] =
-                    c/d*(deriv_state[tmp*2][1] - deriv_state[tmp*2+1][1])/(2*std::abs(cur_val[tmp+size*file_ra_dec]/EPS));
-                    // по dec
-                    deriv[tmp*2+1]=
-                    c/d*(deriv_state[tmp*2][0] - deriv_state[tmp*2+1][0])/(2*std::abs(cur_val[tmp+size*file_ra_dec]/EPS));
-                    // Расчет производной vz
-                    deriv_vz[tmp] = 
-                    ( (deriv_state[tmp*2][5] - deriv_state[tmp*2+1][5]) / 1000)/(2*std::abs(cur_val[tmp+size*file_ra_dec]/EPS));
-                    tmp++;
-                }
-            }
-
-            // Производные v_z по массе
-            deriv_vz[size] =
-            ( (deriv_state[deriv_arr_size-2][5] - deriv_state[deriv_arr_size-1][5]) / 1000)/(2*std::abs(cur_val[full_size-1]/EPS));
-
-            //Производные по массе
-            deriv[deriv_arr_size-2] =
-            c/d*(deriv_state[deriv_arr_size-2][1] - deriv_state[deriv_arr_size-1][1])/(2*std::abs(cur_val[full_size-1]/EPS));
-            deriv[deriv_arr_size-1] =
-            c/d*(deriv_state[deriv_arr_size-2][0] - deriv_state[deriv_arr_size-1][0])/(2*std::abs(cur_val[full_size-1]/EPS));
-
-
-            if (true) {
-                init_star(deriv_in, file_ra_dec);
-                int tmp2 = 0;
-                for(int j=0; j<6; j++)
-                {
-                    if (conditions[j] == 1)
-                    {
-                        deriv_in[j] = cur_val[tmp2 + size*file_ra_dec];
-                        tmp2++;
-                    }
-                }
-                deriv_in[6] = cur_val[full_size - 1];
-
-                full_analytic(deriv_a, deriv_in, t, deriv_za);
-                tmp2 = 0;
-                // Аналитические производные
-                for(int j=0; j<6; j++)
-                {
-                    if (conditions[j] == 1)
-                    {
-                        deriv[tmp2*2]   = deriv_a[j*2];
-                        deriv[tmp2*2+1] = deriv_a[j*2+1];
-                        tmp2++;
-                    }
-                }
-                deriv[deriv_arr_size-2] = deriv_a[12];
-                deriv[deriv_arr_size-1] = deriv_a[13];
-
-
-                // Производные по Z
-                tmp2 = 0;
-                // Аналитические производные
-                for(int j=0; j<6; j++)
-                {
-                    if (conditions[j] == 1)
-                    {
-                        deriv_vz[tmp2] =  deriv_za[j] / 1000;
-                        tmp2++;
-                    }
-                }
-                deriv_vz[deriv_arr_size/2-1] = deriv_za[6] / 1000;
-
-            }
-
-            // Техническая переменная для заполнения AtWr
-            // Работает как второй счетчик цикла, который срабатывает
-            // Только на тех значениях где conditions[j] == 1
-            tmp = 0;
-
-            // Отключение радиальных скоростей
-
-            if (file_number >5)
-            {
-                for(int j=0;j<size+1; j++)
+                    deriv[j*2] = 0;
+                    deriv[j*2 + 1] = 0;
                     deriv_vz[j] = 0;
+                }
             }
+
 
             // Заполнение AtWr(betha)
-            for(int j=0; j<6; j++)
+            for(int j=0; j<SIZE; j++)
             {
-                if (conditions[j] == 1)
-                {
-                    if (file_number > 2)
-                        AtWr[size*file_ra_dec+tmp] +=
-                    (1.0/pow(v_z_err, 2))*r_i[0]*deriv_vz[tmp];
-                    else
-                        AtWr[size*file_ra_dec+tmp] +=
-                    (1.0/pow(ra_err, 2))*r_i[0]*deriv[tmp*2] + (1.0/pow(dec_err, 2))*r_i[1]*deriv[tmp*2+1];
-                    tmp++;
-                }
-
+                if (file_number > 2)
+                    AtWr[SIZE*file_ra_dec+j] +=
+                (1.0/pow(v_z_err, 2))*r_i[0]*deriv_vz[j];
+                else
+                    AtWr[SIZE*file_ra_dec+j] +=
+                (1.0/pow(ra_err, 2))*r_i[0]*deriv[j*2] + (1.0/pow(dec_err, 2))*r_i[1]*deriv[j*2+1];
             }
 
             if (file_number>2)
-                AtWr[full_size-1] += (1.0/pow(v_z_err, 2))*r_i[0]*deriv_vz[size];
+                AtWr[FULL_SIZE-1] += (1.0/pow(v_z_err, 2))*r_i[0]*deriv_vz[SIZE];
             else
-                AtWr[full_size-1] +=
-            (1.0/pow(ra_err, 2))*r_i[0]*deriv[deriv_arr_size-2] + (1.0/pow(dec_err, 2))*r_i[1]*deriv[deriv_arr_size-1];
+                AtWr[FULL_SIZE-1] +=
+            (1.0/pow(ra_err, 2))*r_i[0]*deriv[(SIZE+1)*2-2] + (1.0/pow(dec_err, 2))*r_i[1]*deriv[(SIZE+1)*2-1];
 
 
             // Заполнение AtWA
@@ -413,147 +246,146 @@ void gauss_newton(double* parameters, int star_number, int* conditions)
             //  0    0    S_102  S_102M
             // S_2M S_55M S_102M S_2M+S_55M+S102_M
 
-            // Аналогичные прошлой тех перменные
-            int t1 = 0, t2=0;
-
             for (int j=0; j<6; j++)
             {
-                if (conditions[j] == 1)
-                {
-                    t2 = 0;
                     // Заполнение блока конкретной звезды
-                    for (int k=0; k<6; k++)
-                    {
-                        if (conditions[k] == 1)
-                        {
-                            if (file_number > 2)
-                                AtWA[t1 + size*file_ra_dec][t2 + size*file_ra_dec] +=
-                            (1.0/pow(v_z_err, 2)) * deriv_vz[t1] * deriv_vz[t2];
-                            else
-                                AtWA[t1 + size*file_ra_dec][t2 + size*file_ra_dec] +=
-                            (1.0/pow(ra_err, 2)) * deriv[t1*2] * deriv[t2*2] +
-                            (1.0/pow(dec_err, 2)) * deriv[t1*2+1] * deriv[t2*2+1];
-                            t2++;
-                        }
-                    }
-
-                    // Заполнение правого столбца
-                    if (file_number>2)
-                        AtWA[t1 + size*file_ra_dec][full_size-1] +=
-                    (1.0/pow(v_z_err, 2)) * deriv_vz[size] * deriv_vz[t1];
+                for (int k=0; k<6; k++)
+                {
+                    if (file_number > 2)
+                        AtWA[j + SIZE*file_ra_dec][k + SIZE*file_ra_dec] +=
+                    (1.0/pow(v_z_err, 2)) * deriv_vz[j] * deriv_vz[k];
                     else
-                        AtWA[t1 + size*file_ra_dec][full_size-1] +=
-                    (1.0/pow(ra_err, 2)) * deriv[deriv_arr_size-2] * deriv[t1*2] +
-                    (1.0/pow(dec_err, 2)) * deriv[deriv_arr_size-1] * deriv[t1*2+1];
-
-                    // Заполнение нижней строки (Симметрия)
-                    AtWA[full_size-1][t1 + size*file_ra_dec] = AtWA[t1 + size*file_ra_dec][full_size-1];
-
-                    t1++;
+                        AtWA[j + SIZE*file_ra_dec][k + SIZE*file_ra_dec] +=
+                    (1.0/pow(ra_err, 2)) * deriv[j*2] * deriv[k*2] +
+                    (1.0/pow(dec_err, 2)) * deriv[j*2+1] * deriv[k*2+1];
                 }
+
+                // Заполнение правого столбца
+                if (file_number>2)
+                    AtWA[j + SIZE*file_ra_dec][FULL_SIZE-1] +=
+                (1.0/pow(v_z_err, 2)) * deriv_vz[SIZE] * deriv_vz[j];
+                else
+                    AtWA[j + SIZE*file_ra_dec][FULL_SIZE-1] +=
+                (1.0/pow(ra_err, 2)) * deriv[(SIZE+1)*2-2] * deriv[j*2] +
+                (1.0/pow(dec_err, 2)) * deriv[(SIZE+1)*2-1] * deriv[j*2+1];
+                // Заполнение нижней строки (Симметрия)
+
+                AtWA[FULL_SIZE-1][j + SIZE*file_ra_dec] = AtWA[j + SIZE*file_ra_dec][FULL_SIZE-1];
+                
             }
 
             // Заполнение правого нижнего угла
             if (file_number>2)
-                AtWA[full_size-1][full_size-1] +=
-            1.0/pow(v_z_err, 2) * deriv_vz[size] * deriv_vz[size];
+                AtWA[FULL_SIZE-1][FULL_SIZE-1] +=
+            1.0/pow(v_z_err, 2) * deriv_vz[SIZE] * deriv_vz[SIZE];
             else
-                AtWA[full_size-1][full_size-1] +=
-            1.0/pow(ra_err, 2) * deriv[deriv_arr_size-2] * deriv[deriv_arr_size-2] +
-            1.0/pow(dec_err, 2) * deriv[deriv_arr_size-1] * deriv[deriv_arr_size-1];
-
+                AtWA[FULL_SIZE-1][FULL_SIZE-1] +=
+            1.0/pow(ra_err, 2) * deriv[(SIZE+1)*2-2] * deriv[(SIZE+1)*2-2] +
+            1.0/pow(dec_err, 2) * deriv[(SIZE+1)*2-1] * deriv[(SIZE+1)*2-1];
 
             previous_t = t;
 
             }
         }
 
+        // Устранение вырожденности для отключенных параметров
+        for (int i = 0; i < star_number; i++) {
+            for (int j = 0; j < 6; j++) {
+                if (conditions[j] == 0) {
+                    
+                    AtWA[j + SIZE*i][j + SIZE*i] = 1.0; // Единица на диагонали
+                    AtWr[j + SIZE*i] = 0.0;             // Ноль в векторе невязок
+                }
+            }
+        }
+
         for(int i=0; i<star_number; i++)
         {
-            int t3=0;
             for (int j=0; j<6; j++)
             {
-                if (conditions[j] == 1)
-                {
-                    Preconditioner[size*i+t3] = 1./sqrt(AtWA[t3+ size*i][t3+ size*i]);
-                    t3++;
-                }
+                    Preconditioner[SIZE*i+j] = 1./sqrt(AtWA[j+ SIZE*i][j+ SIZE*i]);
             }
         }
 
         // Заполнение значений предобуславливателя (масса)
 
-        Preconditioner[full_size-1] = 1./sqrt(AtWA[full_size-1][full_size-1]);
+        Preconditioner[FULL_SIZE-1] = 1./sqrt(AtWA[FULL_SIZE-1][FULL_SIZE-1]);
 
         // Диагональное предобуславливание Якоби
 
-        for(int i=0; i<full_size; i++)
+        for(int i=0; i<FULL_SIZE; i++)
         {
             AtWr[i] *= Preconditioner[i];
-            for(int j=0; j<full_size; j++)
+            for(int j=0; j<FULL_SIZE; j++)
                 AtWA[i][j] *= Preconditioner[i]*Preconditioner[j];
         }
 
 
-        std::cout << "------------ITERATION " << i << " -----------------" << std::endl;
-        std::cout << std::endl;
+        // --- ЗАПИСЬ В ЛОГ ФАЙЛ ---
 
-        std::cout << "ERROR SUM: " << sum << std::endl;
-        std::cout << std::endl;
+        if (i == 1)
+            std::cout << "Сумма невязок на первой итерации: " << sum << std::endl;
+        if (i == GN_num_iter - 1)
+            std::cout << "Сумма невязок на итерации " << i << ": " << sum << std::endl;
+        
+        fprintf(log, "------------ITERATION %d -----------------\n\n", i);
+        fprintf(log, "ERROR SUM: %g\n\n", sum);
 
-        if (std::isnan(sum))
+        if (std::isnan(sum)) {
+            // Если получили NaN, закрываем все файлы перед экстренным выходом
+            fclose(log); 
+            for (int f = 0; f < 6; f++) fclose(files[f]);
             return;
+        }
 
-        for(int j=0; j<full_size; j++)
-            printf("%.2e ", cur_val[j]);
-        std::cout << std::endl;
+        // Текущие значения параметров
+        for(int j = 0; j < FULL_SIZE; j++) {
+            fprintf(log, "%.2e ", cur_val[j]);
+        }
+        fprintf(log, "\n\n\n");
 
+        // Вектор правой части (AtWr)
+        for(int j = 0; j < FULL_SIZE; j++) {
+            fprintf(log, "%.4e ", AtWr[j]);
+        }
+        fprintf(log, "\n\n\n");
 
+        // Матрица системы (AtWA)
+        for(int j = 0; j < FULL_SIZE; j++) {
+            for(int k = 0; k < FULL_SIZE; k++) {
+                fprintf(log, "%.2e ", AtWA[j][k]);
+            }
+            fprintf(log, "\n");
+        }
+        fprintf(log, "\n\n");
+        
+        // Чтобы данные сразу сохранялись на диск (полезно при падении программы)
+        fflush(log); 
+        
+        // -------------------------
 
-        std::cout << std::endl;
-        std::cout << std::endl;
+        double w[FULL_SIZE];
+        solve_eq(AtWA, AtWr, FULL_SIZE, w);
 
-        //for(int j=0; j<full_size; j++)
-        //    printf("%.4e ", AtWr[j]);
-        //std::cout << std::endl;
-
-        //std::cout << std::endl;
-        //std::cout << std::endl;
-
-        //for(int j=0; j<full_size; j++)
-        //{
-        //    for(int k=0; k< full_size; k++)
-        //        printf("%.2e ", AtWA[j][k]);
-        //    std::cout << std::endl;
-        //}
-
-        std::cout << std::endl;
-        std::cout << std::endl;
-
-        double w[full_size];
-
-        solve_eq(AtWA, AtWr, full_size, w);
-
-
-        double alpha = 0.2;
-
-        for(int j=0; j<full_size; j++) cur_val[j] = cur_val[j] - alpha* Preconditioner[j]*w[j];
+        for(int j = 0; j < FULL_SIZE; j++) {
+            cur_val[j] = cur_val[j] - alpha * Preconditioner[j] * w[j];
+        }
 
     }
 
     // Освобождение памяти
     rk4Free(&rk_4);
 
-    for (int j=0; j<size; j++)
+    for (int j=0; j<SIZE; j++)
         free(AtWA[j]);
     free(AtWA);
-
-    for (int j=0; j<deriv_arr_size; j++)
-        free(deriv_state[j]);
 
     fclose(files[0]);
     fclose(files[1]);
     fclose(files[2]);
-    free(deriv_a);
-    free(deriv_za);
+    fclose(files[3]);
+    fclose(files[4]);
+    fclose(files[5]);
+
+    fclose(log);
 }

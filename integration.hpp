@@ -24,4 +24,4 @@ void rk4Free(rk4* rk);
 void wrap_integration(double* x, double t, double M_bh, rk4 rk_4);
 
 
-void init_star_state(double* x, double M_bh, double t0);
+void star_state_to_dec(double* x, double M_bh, double t0);
