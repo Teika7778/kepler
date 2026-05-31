@@ -75,7 +75,7 @@ void gauss_newton(double* parameters, int star_number, int* conditions, int GN_n
     // Невязка
     double r_i[2];
 
-    // Переменные для численного интегрирования
+    // Переменные для численного интегрирования:
 
     // Вектор состояния
     double x[STATE_SIZE_STAR_FULL];
@@ -108,7 +108,7 @@ void gauss_newton(double* parameters, int star_number, int* conditions, int GN_n
     while(++i != GN_num_iter)
     {
 
-        double sum = 0;
+        eps = current_value / 1e8;
 
         char buffer[256]; // Буфер для хранения строки
 

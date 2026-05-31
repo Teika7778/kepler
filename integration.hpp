@@ -4,8 +4,6 @@
 #include "struct.hpp"
 
 
-void init_deriv(double* x);
-
 // Взятие производной у массива тел
 void dxdt(double* x, double* xdot, void* data);
 
