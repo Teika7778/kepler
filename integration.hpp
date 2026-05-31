@@ -3,8 +3,6 @@
 #include <iostream>
 #include "struct.hpp"
 
-// Установление начальных координат
-void init_star_state(double* x, kepler_orbit_denorm orbit_denorm, double M_bh);
 
 // Взятие производной у массива тел
 void dxdt(double* x, double* xdot, void* data);
@@ -22,3 +20,6 @@ void rk4Free(rk4* rk);
 // t - время, на которое требуется проинтегрировать систему
 // rk_4, array_for_deriv - технические переменные
 void wrap_integration(double* x, double t, double M_bh, rk4 rk_4);
+
+
+void star_state_to_dec(double* x, double M_bh, double t0);

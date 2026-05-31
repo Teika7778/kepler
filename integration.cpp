@@ -7,31 +7,32 @@
 #include "constans.hpp"
 #include "normalize.hpp"
 
-void init_star_state(double* x, kepler_orbit_denorm orbit_denorm, double M_bh)
+void init_deriv(double* x)
 {
-    double pos[3];
-    double velo[3];
-    kepler_orbit orbit;
-    orbit_denorm.t0 = orbit_denorm.T0 ;
-    normalize(&orbit_denorm, &orbit, R_BH_LY, M_bh);
-    double grav = M_bh * G;
-    kepler_to_cart(&orbit, grav, pos, velo);
-    for (int j = 0; j < 3; j++)
+    for (int i=0; i<6; i++)
     {
-        x[j] = pos[j];
-        x[j + 3] = velo[j];
+        // Авто. производная по массе иниц. 0
+        x[STATE_SIZE_STAR + i] = 0;
+        // Авто. производная по нач. ус. иниц. ед. мат.
+        for (int j=0; j<6; j++)
+        {
+            if (i==j)
+                x[12 + i*6 +j] = 1;
+            else
+                x[12 + i*6 +j] = 0;
+        }
     }
 
-    for (int j=6; j<12; j++)
-        x[j] = 0; // init deriv
 }
+
 
 
 void dxdt(double* x, double* xdot, void* data)
 {
     simulation_data_star* sim_data = (simulation_data_star*)data;
 
-    // Звезда
+    // ------------ Звезда ------------
+
     xdot[0] = x[3];
     xdot[1] = x[4];
     xdot[2] = x[5];
@@ -45,7 +46,8 @@ void dxdt(double* x, double* xdot, void* data)
     xdot[4] = (-sim_data->Grav*sim_data->M_bh * ry) / r3;
     xdot[5] = (-sim_data->Grav*sim_data->M_bh * rz) / r3;
 
-    //Производная
+    // ------------ Производная по массе ------------
+
     xdot[6] = x[9];
     xdot[7] = x[10];
     xdot[8] = x[11];
@@ -87,6 +89,32 @@ void dxdt(double* x, double* xdot, void* data)
     xdot[10] =  Ayx * dxdm + Ayy * dydm + Ayz * dzdm + dFydM;
     // d(dvz/dM)/dt = Azx*dxdm + Azy*dydm + Azz*dzdm + dFzdM
     xdot[11] =  Azx * dxdm + Azy * dydm + Azz * dzdm + dFzdM;
+
+    // ------------ Матрица производных по нач. ус. ------------
+
+    // начальные условия - x0, y0, z0, v_x0, v_y0, v_z0
+
+    // Заполнение первых трех строк матрицы (dx/dx_0)^dot
+    // Это последние три строки матрицы dx/dx_0
+    for (int i=0; i<3; i++) // Первые три строки
+    {
+        for (int j=0; j<6; j++) // Кол-во параметров
+            xdot[12 + i*6 + j] = x[12 + (i+3)*6+j];
+    }
+
+    // Заполнение последних трех строк
+
+    // Четвертая строка
+    for (int j=0; j<6; j++)
+        xdot[12+3*6 + j] = Axx * x[12+ 6*0+ j] + Axy * x[12+ 6*1+ j] + Axz * x[12+ 6*2+ j];
+
+    // Пятая строка
+    for (int j=0; j<6; j++)
+        xdot[12+4*6 + j] = Ayx * x[12+ 6*0+ j] + Ayy * x[12+ 6*1+ j] + Ayz * x[12+ 6*2+ j];
+
+    // Шестая строка
+    for (int j=0; j<6; j++)
+        xdot[12+5*6 + j] = Azx * x[12+ 6*0+ j] + Azy * x[12+ 6*1+ j] + Azz * x[12+ 6*2+ j];
     
 }
 
@@ -146,20 +174,49 @@ void rk4Free(rk4* rk)
 void wrap_integration(double* x, double t, double M_bh, rk4 rk_4)
 {
 
-    double dt = 86400;   // Шаг - день
+    double dt = 86400 / 2;   // Шаг - день
 
     if (t<0){
         dt *= -1;
     }
 
-    struct simulation_data_star data = {G, M_bh};  // Дополнительные данные для ode
+    struct simulation_data_star data = {G, M_bh, 1};  // Дополнительные данные для ode
 
     double local_time = 0;
 
-    while (std::abs(local_time) <= std::abs(t))
+    // Пока разница между нужным временем и текущим больше миллисекунды
+    while (std::abs(t - local_time) > 1e-3)
     {
-        ode(&rk_4, x, STATE_SIZE_STAR, local_time, local_time+dt, dxdt, &data);
-        local_time += dt;  // Увеличиваем время симуляции
+        double current_step = dt;
+        
+        // Если до цели осталось меньше стандартного шага, шагаем ровно в цель
+        if (std::abs(t - local_time) < std::abs(dt)) {
+            current_step = t - local_time;
+        }
+        
+        ode(&rk_4, x, STATE_SIZE_STAR_FULL, local_time, local_time + current_step, dxdt, &data);
+        local_time += current_step;
     }
 
+}
+
+
+void star_state_to_dec(double* x, double M_bh, double t0)
+{
+    double pos[3];
+    double velo[3];
+    kepler_orbit_denorm orbit_denorm =
+    {
+        x[0], x[1], x[2], x[3], x[4], x[5], t0   
+    };
+    kepler_orbit orbit;
+    //orbit_denorm.t0 = orbit_denorm.T0 ;
+    normalize(&orbit_denorm, &orbit, R_BH_LY, M_bh);
+    double grav = M_bh * G;
+    kepler_to_cart(&orbit, grav, pos, velo);
+    for (int j = 0; j < 3; j++)
+    {
+        x[j] = pos[j];
+        x[j + 3] = velo[j];
+    }
 }

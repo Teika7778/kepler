@@ -1,3 +1,6 @@
 #pragma once
 
-double gauss_newton(kepler_orbit_denorm* stars, double M_bh, int steps=20, bool numerical=true);
+void gauss_newton(double* parameters, int star_number, int* conditions, int GN_num_iter, double alpha);
+
+void init_star(double* x, int star_number);
+
