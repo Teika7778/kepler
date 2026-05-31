@@ -14,7 +14,7 @@
 int main()
 {
     // Открываем файл с входными данными
-    std::ifstream input_file("input.txt");
+    std::ifstream input_file("user_files/input.txt");
     if (!input_file.is_open()) {
         std::cerr << "Ошибка: Не удалось открыть файл input.txt!" << std::endl;
         return 1;
@@ -69,7 +69,7 @@ int main()
     gauss_newton(parameters.data(), num_star, conditions, GN_num_iter, alpha);
 
     // --- ВЫВОД РЕЗУЛЬТАТА В result.txt ---
-    std::ofstream res_file("result.txt");
+    std::ofstream res_file("user_files/result.txt");
     if (res_file.is_open()) {
         
         // Массив названий звезд для удобства

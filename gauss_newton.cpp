@@ -53,7 +53,7 @@ void gauss_newton(double* parameters, int star_number, int* conditions, int GN_n
     files[4] = fopen("data/s38_velocity.txt", "r");
     files[5] = fopen("data/s55_velocity.txt", "r");
 
-    FILE* log = fopen("log.txt", "w");
+    FILE* log = fopen("user_files/log.txt", "w");
 
     // Переменные для перевода метров в ra. и dec.
     double d = (double) R_BH_LY * (double) LIGHT_YEAR;
