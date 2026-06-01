@@ -338,6 +338,8 @@ void gauss_newton(double* parameters, int star_number, int* conditions, int GN_n
             // Если получили NaN, закрываем все файлы перед экстренным выходом
             fclose(log); 
             for (int f = 0; f < 6; f++) fclose(files[f]);
+            for (int j=0; j<FULL_SIZE; j++)
+                cur_val[j] = NAN;
             return;
         }
 
