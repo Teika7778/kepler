@@ -105,10 +105,13 @@ void gauss_newton(double* parameters, int star_number, int* conditions, int GN_n
     // Массив производных невязок vz по параметрам
     double deriv_vz[SIZE+1];
 
+    double sum = 0;
+    double prev_sum = 0;
+
     while(++i != GN_num_iter)
     {
 
-        double sum = 0;
+        sum = 0;
 
         char buffer[256]; // Буфер для хранения строки
 
@@ -364,12 +367,22 @@ void gauss_newton(double* parameters, int star_number, int* conditions, int GN_n
         
         // -------------------------
 
+        // Условие выхода
+        if  ( std::abs(sum - prev_sum)  < 1e-2 )
+        {
+            std::cout << "Erorr sum on iteration " << i << ": " << sum << std::endl;
+            break;
+        }
+            
+
         double w[FULL_SIZE];
         solve_eq(AtWA, AtWr, FULL_SIZE, w);
 
         for(int j = 0; j < FULL_SIZE; j++) {
             cur_val[j] = cur_val[j] - alpha * Preconditioner[j] * w[j];
         }
+
+        prev_sum = sum;
 
     }
 
