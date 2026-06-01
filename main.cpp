@@ -90,9 +90,11 @@ int main()
         res_file << parameters[full_size - 1] << std::endl;
         
         res_file.close();
-        std::cout << "Result is written to result.txt" << std::endl;
-    } else {
-        std::cerr << "Erorr: cant open file result.txt" << std::endl;
+
+        if (std::isnan(parameters[0]))
+            std::cout << "Result is nan" << std::endl;
+        else
+            std::cout << "Result is written to result.txt" << std::endl;
     }
 
     return 0;
