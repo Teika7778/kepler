@@ -92,9 +92,9 @@ int main()
         res_file.close();
 
         if (std::isnan(parameters[0]))
-            std::cout << "Result is nan" << std::endl;
+            std::cout << "\n\nMethod has diverged" << std::endl;
         else
-            std::cout << "Result is written to result.txt" << std::endl;
+            std::cout << "\n\nResult is written to result.txt" << std::endl;
     }
 
     return 0;

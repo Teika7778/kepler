@@ -93,6 +93,12 @@ void gauss_newton(double* parameters, int star_number, int* conditions, int GN_n
     // Вектор AtWr(betha)
     double AtWr[FULL_SIZE];
 
+    // Переменные для вычисления формальных ошибок
+    double formal_param_errors[FULL_SIZE];
+
+    double** AtWA_inv = (double**)malloc(sizeof(double*)*FULL_SIZE);
+    for (int j=0; j<FULL_SIZE; j++) AtWA_inv[j] = (double*)malloc(sizeof(double)*FULL_SIZE);
+
     // Предобуславливатель Якоби
     double Preconditioner[FULL_SIZE];
 
@@ -314,6 +320,13 @@ void gauss_newton(double* parameters, int star_number, int* conditions, int GN_n
 
         Preconditioner[FULL_SIZE-1] = 1./sqrt(AtWA[FULL_SIZE-1][FULL_SIZE-1]);
 
+        // Вычисление формальных ошибок параметров
+
+        find_inverse(AtWA, AtWA_inv, FULL_SIZE);
+
+        for (int j=0; j<FULL_SIZE; j++)
+            formal_param_errors[j] = sqrt(AtWA_inv[j][j]);
+
         // Диагональное предобуславливание Якоби
 
         for(int i=0; i<FULL_SIZE; i++)
@@ -325,14 +338,11 @@ void gauss_newton(double* parameters, int star_number, int* conditions, int GN_n
 
 
         // --- ЗАПИСЬ В ЛОГ ФАЙЛ ---
-
-        if (i == 1)
-            std::cout << "Erorr sum on first iteration: " << sum << std::endl;
-        if (i == GN_num_iter - 1)
-            std::cout << "Erorr sum on iteration " << i << ": " << sum << std::endl;
         
         fprintf(log, "------------ITERATION %d -----------------\n\n", i);
+        printf("------------ITERATION %d -----------------\n\n", i);
         fprintf(log, "ERROR SUM: %g\n\n", sum);
+        printf("ERROR SUM: %g\n\n", sum);
 
         if (std::isnan(sum)) {
             // Если получили NaN, закрываем все файлы перед экстренным выходом
@@ -343,17 +353,36 @@ void gauss_newton(double* parameters, int star_number, int* conditions, int GN_n
             return;
         }
 
-        // Текущие значения параметров
+        fprintf(log, "Current parameters value: \n");
+        printf("Current parameters value: \n");
+
+        // Текущие значения паяраметров
         for(int j = 0; j < FULL_SIZE; j++) {
             fprintf(log, "%.2e ", cur_val[j]);
+            printf("%.2e ", cur_val[j]);
         }
         fprintf(log, "\n\n\n");
+        printf("\n");
+
+        fprintf(log, "Formal errors: \n");
+        printf("Formal errors: \n");
+
+        for (int j=0; j<FULL_SIZE; j++){
+            fprintf(log, "%.2e ", formal_param_errors[j]);
+            printf("%.2e ", formal_param_errors[j]);
+        }
+        printf("\n");
+
+
+        fprintf(log, "\n\nAtWr: \n");
 
         // Вектор правой части (AtWr)
         for(int j = 0; j < FULL_SIZE; j++) {
             fprintf(log, "%.4e ", AtWr[j]);
         }
         fprintf(log, "\n\n\n");
+
+        fprintf(log, "AtWA: \n");
 
         // Матрица системы (AtWA)
         for(int j = 0; j < FULL_SIZE; j++) {
@@ -394,6 +423,10 @@ void gauss_newton(double* parameters, int star_number, int* conditions, int GN_n
     for (int j=0; j<SIZE; j++)
         free(AtWA[j]);
     free(AtWA);
+
+    for (int j=0; j<SIZE; j++)
+        free(AtWA_inv[j]);
+    free(AtWA_inv);
 
     fclose(files[0]);
     fclose(files[1]);
